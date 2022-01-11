@@ -9,6 +9,10 @@ Created on Wed Dec 15 2021
 import os, sys
 import numpy as np
 from netCDF4 import num2date
+from scipy.stats import linregress
+from scipy.signal import correlate
+import matplotlib.pyplot as plt
+
 
 Code_dir = 'home/wadh5699/Example_Scripts/Amelia_example_scripts/'
 sys.path.append(Code_dir)
@@ -17,7 +21,7 @@ import reading_in_data_functions as rd_data
 import save_file as sf
 
 
-def analysis(dataset, season):
+def get_SAM_indices(dataset='CSF-20C', season='DJF'):
 	#reads in netcdf file of relevant surface pressures
 	file_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_msl_data.nc'
 	mslp_data, lats, lons, levs, times, calendar, t_units = rd_data.read_in_variable(file_name, 'mslp for SAM', lat_name='latitude', lon_name='longitude', time_name='time')
@@ -51,6 +55,12 @@ def analysis(dataset, season):
 	yearly_SAM_indices -= mean_norm
 	yearly_SAM_indices /= std_norm
 	
+	return yearly_SAM_indices, mean_SAM_indices, SAM_stdevs, times, calendar, t_units
+
+
+def save_SAM_indices(dataset='CSF-20C', season='DJF'):
+	
+	yearly_SAM_indices, mean_SAM_indices, SAM_stdevs, times, calendar, t_units = get_SAM_indices(dataset, season)
 	
 	#saves normalized SAM indices as netcdf files
 	mean_destination = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_sam_mean_data.nc'
@@ -62,7 +72,8 @@ def analysis(dataset, season):
 	
 	ensemble_destination = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_sam_ensemble_data.nc'
 	ensemble_description = 'Marshall SAM index from ' + dataset + ' ensemble during ' + season
-	dim1 = np.arange(0, 25, 1)
+	ens_len = len(yearly_SAM_indices[0])
+	dim1 = np.arange(0, ens_len, 1)
 	save2 = sf.save_file(ensemble_destination, ensemble_description)
 	save2.add_dimension(dim1, 'ensemble member')
 	save2.add_times(times, calendar, t_units, time_name='time')
@@ -75,24 +86,41 @@ def analysis(dataset, season):
 	save3.add_times(times, calendar, t_units, time_name='time')
 	save3.add_variable(np.array(SAM_stdevs), 'SAM index', ('time'))
 	save3.close_file()
+
+def mask_era(all_SAM_indices, times, calendar, units, season='DJF'):
+	#reduces data to appropriate season in same way as reading_in_data_functions.calculate_annual_mean
+	try: dates = num2date(times, calendar=calendar, units=units)
+	except: dates = num2date(times, units=units)
+	months = np.array([])
+	years = np.array([])
+	for day in dates:
+		months = np.append(months, day.timetuple()[1])
+		years = np.append(years, day.timetuple()[0])
 	
-	#reads in offical Marshall SAM index data from text file
-	Marshall_SAM_index, years_SAM = rd_data.read_Marshall_SAM_idx(season)
+	return_values = np.array([])
+	for i,yr in enumerate(np.unique(years)):
+		if season == 'DJF': mask = ((years==(yr-1))&(months==12)) | (years==yr) & ((months==1)|(months==2))
+		elif season == 'MAM': mask = (years==yr) & ((months == 3)|(months==4)|(months==5))
+		elif season == 'JJA': mask = (years==yr) & ((months==6)|(months==7)|(months==8))
+		elif season == 'SON': mask = (years==yr) & ((months==9)|(months==10)|(months==11))
+		elif (season==None)|(season=='ANN'): mask = (years==yr)
+		else:
+			print('Season is not valid')
+			raise NameError
+		return_values = np.append(return_values, np.mean(all_SAM_indices[mask]))
 	
-	#does same mean surface level pressure calculations for ERA5 data
+	return return_values, np.unique(years)
+
+def get_era_SAM_indices(season='DJF'):
+	#reads in ERA5 sea level pressure data and uses it to produce same type of SAM index
 	era5_file = '/network/group/aopp/met_data/MET001_ERA5/data/psl/mon/psl_mon_ERA5_2.5x2.5_195001-197812.nc'
 	era_slp, era_lats, era_lons, era_levs, era_times, era_calendar, era_t_units = rd_data.read_in_variable(era5_file, 'psl')
 	era5_file2 = '/network/group/aopp/met_data/MET001_ERA5/data/psl/mon/psl_mon_ERA5_2.5x2.5_197901-202012.nc'
 	era_slp2, _, _, _, era_times2, _, _ = rd_data.read_in_variable(era5_file2, 'psl')
 	era_slp = np.append(era_slp, era_slp2, axis=0)
 	era_times = np.append(era_times, era_times2)
-	try: era_dates = num2date(era_times, calendar=era_calendar, units=era_t_units)
-	except: era_dates = num2date(era_times, units=era_t_units)
-	era_years = np.array([])
-	for day in era_dates:
-		era_years = np.append(era_years, day.timetuple()[0])
 	
-	era_SAM_indices = []
+	all_year_era_SAM_indices = np.array([])
 	for era_year_slp in era_slp:
 		era_slp_65S = era_year_slp[10] #index 10 corresponds to latitude 65S
 		era_slp_40S = era_year_slp[18] #index 18 corresponds to latitude 40S
@@ -100,8 +128,11 @@ def analysis(dataset, season):
 		zm_40S = np.mean(era_slp_40S) #takes zonal mean of mslp at 40S
 		zm_65S = np.mean(era_slp_65S) #takes zonal mean of mslp at 65S
 		
-		SAM_index = zm_40S - zm_65S #subtracts surface pressures to find unnormalized SAM index
-		era_SAM_indices.append(SAM_index) #stores ERA5 sam index for each year
+		era_SAM_index = zm_40S - zm_65S #subtracts surface pressures to find unnormalized SAM index
+		all_year_era_SAM_indices= np.append(all_year_era_SAM_indices, era_SAM_index) #stores ERA5 sam index for each year
+	
+	#eliminates irrelevant seasons
+	era_SAM_indices, era_years = mask_era(all_year_era_SAM_indices, era_times, era_calendar, era_t_units, season)
 	
 	#normalizes ERA SAM indices
 	era_mean_norm = np.mean(era_SAM_indices)
@@ -110,29 +141,105 @@ def analysis(dataset, season):
 	era_SAM_indices -= era_mean_norm
 	era_SAM_indices /= era_std_norm
 	
+	return era_SAM_indices, era_years
+
+
+def graph_SAM_indices(dataset='CSF-20C', season='DJF'):
+	
+	yearly_SAM_indices, mean_SAM_indices, SAM_stdevs, times, calendar, t_units = get_SAM_indices(dataset, season)
+	
+	#reads in offical Marshall SAM index data from text file
+	Marshall_SAM_index, years_SAM = rd_data.read_Marshall_SAM_idx(season)
+	
+	#does same mean surface level pressure calculations for ERA5 data
+	era_SAM_indices, era_years = get_era_SAM_indices(season)
 	
 	#displays plots of ensemble and mean SAM indices
-	import matplotlib.pyplot as plt
-	
 	plt.figure(1)
 	plt.plot(times, yearly_SAM_indices, color='gray')
 	plt.plot(times, mean_SAM_indices, linewidth = 2, color = 'black', label = 'mean')
 	plt.plot(years_SAM, Marshall_SAM_index, linewidth = 2, color = 'red', label = 'Marshall data')
-	#plt.plot(era_years, era_SAM_indices, linewidth = 2, color= 'blue', label = 'ERA5 data')
+	plt.plot(era_years, era_SAM_indices, linewidth = 2, color= 'blue', label = 'ERA5 data')
 	#plt.errorbar(times, mean_SAM_indices, yerr=SAM_stdevs, color='black', label='standard deviation')
-	plt.title('Unnormalized SAM Index in ' + dataset + ' Ensemble')
+	plt.title('Normalized SAM Index in ' + dataset + ' Ensemble')
 	plt.xlabel('Year')
-	plt.ylabel('Unnormalized SAM Index')
-	figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_Unnormalized_SAM.png'
+	plt.ylabel('Normalized SAM Index')
+	plt.legend()
+	figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_' + season + '_Normalized_SAM.png'
 	plt.savefig(figure_name)
 	plt.show()
 
 
+def truncate_to_pairs(times1, data1, times2, data2):
+	#creates arrays containing only data for years in both datasets provided
+	paired1 = np.array([])
+	paired2 = np.array([])
+	paired_times = np.array([])
+	
+	for time1, point1 in zip(times1, data1):
+		for time2, point2 in zip(times2, data2):
+			if time1 == time2:
+				paired1 = np.append(paired1, point1)
+				paired2 = np.append(paired2, point2)
+				paired_times = np.append(paired_times, time1)
+	
+	return paired1, paired2, paired_times
 
-dataset = 'CSF-20C' #allows switching between CSF-20C and ASF-20C data
+
+def stat_analysis(dataset='CSF-20C', season='DJF'):
+	
+	yearly_SAM_indices, mean_SAM_indices, SAM_stdevs, times, calendar, t_units = get_SAM_indices(dataset, season)
+	
+	#reads in offical Marshall SAM index data from text file
+	Marshall_SAM_index, Marshall_years = rd_data.read_Marshall_SAM_idx(season)
+	
+	#creates arrays containing only SAM indices for years in both forecast dataset and Marshall data
+	paired_my_index, paired_Marshall_index, my_and_Marshall_times = truncate_to_pairs(times, mean_SAM_indices, Marshall_years, Marshall_SAM_index)
+	
+	#plots linear regression comparing forecast and Marshall SAM indices
+	plt.plot(paired_my_index, paired_Marshall_index, 'o', label='original data')
+	res = linregress(paired_my_index, paired_Marshall_index)
+	
+	linefit_Marshall_index = []
+	for my_index in paired_my_index:
+		linefit_Marshall_index.append(my_index * res.slope + res.intercept)
+	
+	plt.plot(paired_my_index, linefit_Marshall_index, 'r', label='fitted line')
+	plt.title('Relationship between ' + dataset + ' SAM index and Marshall index during ' + season)
+	plt.legend()
+	print(f"R squared: {res.rvalue**2:.6f}")
+	figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_' + season + '_Marshall_SAM_correlation.png'
+	plt.savefig(figure_name)
+	plt.show()
+	
+	#repeats above process with dataset and ERA5 data
+	era_SAM_indices, era_years = get_era_SAM_indices(season)
+	paired_my_index2, paired_era_index, my_and_era_times = truncate_to_pairs(times, mean_SAM_indices, era_years, era_SAM_indices)
+	plt.plot(paired_my_index2, paired_era_index, 'o', label='original data')
+	res2 = linregress(paired_my_index2, paired_era_index)
+	linefit_era_index = []
+	for my_index in paired_my_index2:
+		linefit_era_index.append(my_index * res2.slope + res2.intercept)
+	
+	plt.plot(paired_my_index2, linefit_era_index, 'r', label='fitted line')
+	plt.title('Relationship between ' + dataset + ' SAM index and ERA5 index during ' + season)
+	plt.legend()
+	print(f"R squared: {res2.rvalue**2:.6f}")
+	figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_' + season + '_ERA5_SAM_correlation.png'
+	plt.savefig(figure_name)
+	plt.show()
+
+def full_analysis(dataset='CSF-20C', season='DJF'):
+	save_SAM_indices(dataset, season)
+	graph_SAM_indices(dataset, season)
+	stat_analysis(dataset, season)
+
+
+#runs code
+dataset = 'CSF-20C'
 season = 'DJF'
+full_analysis(dataset, season)
 
-analysis(dataset, season)
 """
 years = np.arange(1981, 2001, 1)
 ensemble = np.arange(0, 25, 1)

@@ -49,8 +49,6 @@ def conversion(dataset='CSF-20C', season='DJF'):
 			start_month = '08'
 	
 	#reads in surface level pressure at 40S and 65S and saves as netcdf
-	ens_len = 10 #this is just to test the code more quickly
-	years = np.arange(1950, 1980, 1) #this is just to test the code more quickly
 	ensemble = np.arange(0, ens_len, 1)
 	annual_surface_pressures = []
 	for year in years:
