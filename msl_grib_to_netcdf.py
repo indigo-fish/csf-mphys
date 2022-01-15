@@ -16,6 +16,7 @@ import read_in_grib_files as rgrb
 import save_file as svf
 
 def conversion(dataset='CSF-20C', season='DJF'):
+	print(dataset + ' ' + season)
 	#sets aspects of filename/directory based on dataset and season used
 	if dataset == 'CSF-20C':
 		years = np.arange(1901, 2011, 1)
@@ -32,6 +33,7 @@ def conversion(dataset='CSF-20C', season='DJF'):
 		elif season == 'SON':
 			start_month = '08'
 			ens_len = 25
+	
 	elif dataset == 'ASF-20C':
 		years = np.arange(1900, 2010, 1)
 		ens_len = 51
@@ -47,6 +49,7 @@ def conversion(dataset='CSF-20C', season='DJF'):
 		elif season == 'SON':
 			code_str = 'gir6'
 			start_month = '08'
+	print(code_str)
 	
 	#reads in surface level pressure at 40S and 65S and saves as netcdf
 	ensemble = np.arange(0, ens_len, 1)
@@ -77,4 +80,7 @@ def conversion(dataset='CSF-20C', season='DJF'):
 	save.add_variable(annual_surface_pressures, 'mslp for SAM', ('time', 'ensemble member', 'latitude', 'longitude'))
 	save.close_file()
 
-conversion()
+
+ASFseasons = ['DJF', 'MAM', 'JJA', 'SON']
+for season in ASFseasons:
+	conversion(dataset='ASF-20C', season=season)

@@ -10,7 +10,7 @@ import os, sys
 import numpy as np
 from netCDF4 import num2date
 from scipy.stats import linregress
-from scipy.signal import correlate
+from scipy.ndimage import uniform_filter1d
 import matplotlib.pyplot as plt
 
 
@@ -161,7 +161,7 @@ def graph_SAM_indices(dataset='CSF-20C', season='DJF'):
 	plt.plot(years_SAM, Marshall_SAM_index, linewidth = 2, color = 'red', label = 'Marshall data')
 	plt.plot(era_years, era_SAM_indices, linewidth = 2, color= 'blue', label = 'ERA5 data')
 	#plt.errorbar(times, mean_SAM_indices, yerr=SAM_stdevs, color='black', label='standard deviation')
-	plt.title('Normalized SAM Index in ' + dataset + ' Ensemble')
+	plt.title('Normalized SAM Index in ' + dataset + ' Ensemble During ' + season)
 	plt.xlabel('Year')
 	plt.ylabel('Normalized SAM Index')
 	plt.legend()
@@ -185,49 +185,65 @@ def truncate_to_pairs(times1, data1, times2, data2):
 	
 	return paired1, paired2, paired_times
 
+def correlate_pairs(data1, data2, label1, label2, season='DJF', smoothing=None):
+	plt.plot(data1, data2, 'o', label='original data')
+	res = linregress(data1, data2)
+	
+	lineplot = []
+	for point in data1:
+		lineplot.append(point * res.slope + res.intercept)
+	
+	plt.plot(data1, lineplot, 'r', label='fitted line')
+	titlestr = 'Relationship between ' + label1 + ' and ' + label2 + ' SAM index during ' + season
+	if not smoothing==None: titlestr += ' with ' + str(smoothing) + '-year average'
+	plt.title(titlestr)
+	plt.xlabel(label1 + ' SAM')
+	plt.ylabel(label2 + ' SAM')
+	plt.legend()
+	plt.annotate(f"R squared: {res.rvalue**2:.6f}", (0.2, 0.2), xycoords='axes fraction')
+	figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + label1 + '_' + label2 + '_' + season + '_SAM_correlation'
+	if smoothing==None: figure_name += '.png'
+	else: figure_name += '_' + str(smoothing) + '_average.png'
+	plt.savefig(figure_name)
+	plt.show()
+
+def running_mean(data, years, timescale):
+	averaged_data = uniform_filter1d(np.array(data), timescale)
+	return averaged_data[int(timescale/2):len(averaged_data) - int(timescale/2)], years[int(timescale/2):len(averaged_data) - int(timescale/2)]
+
+def smooth_and_plot(data1, data2, label1, label2, times, timescale, season):
+	smoothed_data1, _ = running_mean(data1, times, timescale)
+	smoothed_data2, _ = running_mean(data2, times, timescale)
+	correlate_pairs(smoothed_data1, smoothed_data2, label1, label2, season=season, smoothing=timescale)
 
 def stat_analysis(dataset='CSF-20C', season='DJF'):
-	
+	#reads in seasonal forecast SAM indices
 	yearly_SAM_indices, mean_SAM_indices, SAM_stdevs, times, calendar, t_units = get_SAM_indices(dataset, season)
 	
 	#reads in offical Marshall SAM index data from text file
 	Marshall_SAM_index, Marshall_years = rd_data.read_Marshall_SAM_idx(season)
 	
-	#creates arrays containing only SAM indices for years in both forecast dataset and Marshall data
-	paired_my_index, paired_Marshall_index, my_and_Marshall_times = truncate_to_pairs(times, mean_SAM_indices, Marshall_years, Marshall_SAM_index)
-	
-	#plots linear regression comparing forecast and Marshall SAM indices
-	plt.plot(paired_my_index, paired_Marshall_index, 'o', label='original data')
-	res = linregress(paired_my_index, paired_Marshall_index)
-	
-	linefit_Marshall_index = []
-	for my_index in paired_my_index:
-		linefit_Marshall_index.append(my_index * res.slope + res.intercept)
-	
-	plt.plot(paired_my_index, linefit_Marshall_index, 'r', label='fitted line')
-	plt.title('Relationship between ' + dataset + ' SAM index and Marshall index during ' + season)
-	plt.legend()
-	print(f"R squared: {res.rvalue**2:.6f}")
-	figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_' + season + '_Marshall_SAM_correlation.png'
-	plt.savefig(figure_name)
-	plt.show()
-	
-	#repeats above process with dataset and ERA5 data
+	#reads in ERA SAM indices
 	era_SAM_indices, era_years = get_era_SAM_indices(season)
-	paired_my_index2, paired_era_index, my_and_era_times = truncate_to_pairs(times, mean_SAM_indices, era_years, era_SAM_indices)
-	plt.plot(paired_my_index2, paired_era_index, 'o', label='original data')
-	res2 = linregress(paired_my_index2, paired_era_index)
-	linefit_era_index = []
-	for my_index in paired_my_index2:
-		linefit_era_index.append(my_index * res2.slope + res2.intercept)
 	
-	plt.plot(paired_my_index2, linefit_era_index, 'r', label='fitted line')
-	plt.title('Relationship between ' + dataset + ' SAM index and ERA5 index during ' + season)
-	plt.legend()
-	print(f"R squared: {res2.rvalue**2:.6f}")
-	figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_' + season + '_ERA5_SAM_correlation.png'
-	plt.savefig(figure_name)
-	plt.show()
+	#we want to do same analysis first for Marshall index, then for ERA5 index
+	pairs = [[Marshall_SAM_index, Marshall_years, 'Marshall'], [era_SAM_indices, era_years, 'ERA5']]
+	
+	for pair in pairs:
+		#creates arrays containing only SAM indices for years in both forecast dataset and Marshall data
+		paired_my_index, paired_other_index, paired_times = truncate_to_pairs(times, mean_SAM_indices, pair[1], pair[0])
+		#plots linear regression comparing forecast to other SAM indices
+		correlate_pairs(paired_my_index, paired_other_index, dataset, pair[2], season=season)
+		
+		#repeats same process for different lengths of running means
+		timescales = [2, 3, 5, 10, 15, 20, 30]
+		for timescale in timescales:
+			smooth_and_plot(paired_my_index, paired_other_index, dataset, pair[2], paired_times, timescale, season)
+	
+	#compares ERA5 data and Marshall data
+	paired_era_index2, paired_Marshall_index2, Marshall_and_era_times = truncate_to_pairs(era_years, era_SAM_indices, Marshall_years, Marshall_SAM_index)
+	correlate_pairs(paired_era_index2, paired_Marshall_index2, 'ERA5', 'Marshall', season=season)
+
 
 def full_analysis(dataset='CSF-20C', season='DJF'):
 	save_SAM_indices(dataset, season)
@@ -236,8 +252,13 @@ def full_analysis(dataset='CSF-20C', season='DJF'):
 
 
 #runs code
+dataset = 'ASF-20C'
+seasons = 'MAM', 'JJA', 'SON'
+for season in seasons:
+	full_analysis(dataset, season)
+
 dataset = 'CSF-20C'
-season = 'DJF'
+season = 'SON'
 full_analysis(dataset, season)
 
 """
