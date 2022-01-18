@@ -8,7 +8,7 @@ Created on Wed Dec 15 2021
 
 import os, sys
 import numpy as np
-from netCDF4 import num2date
+from netCDF4 import num2date, Dataset
 from scipy.stats import linregress
 from scipy.ndimage import uniform_filter1d
 import matplotlib.pyplot as plt
@@ -87,7 +87,28 @@ def save_SAM_indices(dataset='CSF-20C', season='DJF'):
 	save3.add_variable(np.array(SAM_stdevs), 'SAM index', ('time'))
 	save3.close_file()
 
+
+def read_SAM_indices(dataset='CSF-20C', season='DJF'):
+	
+	mean_source = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_sam_mean_data.nc'
+	mean_read = Dataset(mean_source)
+	mean_data = mean_read.variables['SAM index'][:]
+	
+	ensemble_source = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_sam_ensemble_data.nc'
+	ensemble_read = Dataset(ensemble_source)
+	ensemble_data = mean_read.variables['SAM index'][:]
+	
+	variation_source = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_sam_variation_data.nc'
+	variation_read = Dataset(variation_source)
+	variation_data = variation_read.variables['SAM index'][:]
+	
+	times, calendar, units = rd_data.read_time_dimension(mean_source, time_name = 'time')
+	
+	return mean_data, times, calendar, units
+
+
 def mask_era(all_SAM_indices, times, calendar, units, season='DJF'):
+	
 	#reduces data to appropriate season in same way as reading_in_data_functions.calculate_annual_mean
 	try: dates = num2date(times, calendar=calendar, units=units)
 	except: dates = num2date(times, units=units)
@@ -111,7 +132,9 @@ def mask_era(all_SAM_indices, times, calendar, units, season='DJF'):
 	
 	return return_values, np.unique(years)
 
+
 def get_era_SAM_indices(season='DJF'):
+	
 	#reads in ERA5 sea level pressure data and uses it to produce same type of SAM index
 	era5_file = '/network/group/aopp/met_data/MET001_ERA5/data/psl/mon/psl_mon_ERA5_2.5x2.5_195001-197812.nc'
 	era_slp, era_lats, era_lons, era_levs, era_times, era_calendar, era_t_units = rd_data.read_in_variable(era5_file, 'psl')
@@ -185,7 +208,9 @@ def truncate_to_pairs(times1, data1, times2, data2):
 	
 	return paired1, paired2, paired_times
 
+
 def correlate_pairs(data1, data2, label1, label2, season='DJF', smoothing=None):
+	#produces scatter plots of SAM indices in the same years in two different datasets
 	plt.plot(data1, data2, 'o', label='original data')
 	res = linregress(data1, data2)
 	
@@ -207,18 +232,51 @@ def correlate_pairs(data1, data2, label1, label2, season='DJF', smoothing=None):
 	plt.savefig(figure_name)
 	plt.show()
 
+
 def running_mean(data, years, timescale):
+	#produces a cropped dataset of ten year averages of a longer dataset
 	averaged_data = uniform_filter1d(np.array(data), timescale)
 	return averaged_data[int(timescale/2):len(averaged_data) - int(timescale/2)], years[int(timescale/2):len(averaged_data) - int(timescale/2)]
 
+
 def smooth_and_plot(data1, data2, label1, label2, times, timescale, season):
+	#takes running mean of a pair of datasets and plots the comparison between them
 	smoothed_data1, _ = running_mean(data1, times, timescale)
 	smoothed_data2, _ = running_mean(data2, times, timescale)
 	correlate_pairs(smoothed_data1, smoothed_data2, label1, label2, season=season, smoothing=timescale)
 
+
+def compare_smoothings(dataset='CSF-20C', season='DJF'):
+	#reads in seasonal forecast SAM indices
+	mean_SAM_indices, times, calendar, t_units = read_SAM_indices(dataset, season)
+	#reads in official Marshall SAM index data from text file
+	Marshall_SAM_index, Marshall_years = rd_data.read_Marshall_SAM_idx(season)
+	#reads in ERA SAM indices
+	era_SAM_indices, era_years = get_era_SAM_indices(season)
+	#we want to do same analysis first for Marshall index, then for ERA5 index
+	pairs = [[Marshall_SAM_index, Marshall_years, 'Marshall'], [era_SAM_indices, era_years, 'ERA5']]
+	
+	smoothings = np.arange(1, 40, 1)
+	for pair in pairs:
+		r_squares = []
+		paired_my_index, paired_other_index, paired_times = truncate_to_pairs(times, mean_SAM_indices, pair[1], pair[0])
+		for smoothing in smoothings:
+			smoothed_my_index, _ = running_mean(paired_my_index, paired_times, smoothing)
+			smoothed_other_index, _ = running_mean(paired_other_index, paired_times, smoothing)
+			res = linregress(smoothed_my_index, smoothed_other_index)
+			r_squares.append(res.rvalue**2)
+		plt.plot(smoothings, r_squares)
+		plt.xlabel('years averaged')
+		plt.ylabel('R squared value')
+		plt.title('Correlation strength between ' + dataset + ' and ' + pair[2] + ' for different time scales')
+		figure_name = figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_' + pair[2] + '_' + season + '_SAM_correlation_depending_on_averaging.png'
+		plt.savefig(figure_name)
+		plt.show()
+
+
 def stat_analysis(dataset='CSF-20C', season='DJF'):
 	#reads in seasonal forecast SAM indices
-	yearly_SAM_indices, mean_SAM_indices, SAM_stdevs, times, calendar, t_units = get_SAM_indices(dataset, season)
+	mean_SAM_indices, times, calendar, t_units = read_SAM_indices(dataset, season)
 	
 	#reads in offical Marshall SAM index data from text file
 	Marshall_SAM_index, Marshall_years = rd_data.read_Marshall_SAM_idx(season)
@@ -252,6 +310,12 @@ def full_analysis(dataset='CSF-20C', season='DJF'):
 
 
 #runs code
+datasets = ['CSF-20C', 'ASF-20C']
+seasons = ['DJF', 'JJA']
+for dataset in datasets:
+	for season in seasons:
+		compare_smoothings(dataset=dataset, season=season)
+"""
 dataset = 'ASF-20C'
 seasons = 'MAM', 'JJA', 'SON'
 for season in seasons:
@@ -260,7 +324,7 @@ for season in seasons:
 dataset = 'CSF-20C'
 season = 'SON'
 full_analysis(dataset, season)
-
+"""
 """
 years = np.arange(1981, 2001, 1)
 ensemble = np.arange(0, 25, 1)
