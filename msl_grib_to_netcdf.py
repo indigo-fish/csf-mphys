@@ -59,7 +59,7 @@ def conversion(dataset='CSF-20C', season='DJF'):
 		for member in ensemble:
 			#temporary code to address the missing data in CSF-20 February 1936
 			if year == 1936 and season == 'MAM' and dataset == 'CSF-20C':
-				file_name = '/network/group/aopp/predict/AWH002_BEFORT_SEASONAL/' + dataset + '/ecmf/' + code_str + '/sfc/fcmean/' + str(year) + start_month + '01/var151/ecmf-' + code_str + '_' + str(member) + '_' + str(year-1) + start_month + '01_fcmean_sfc.grb'
+				file_name = '/network/group/aopp/predict/AWH002_BEFORT_SEASONAL/' + dataset + '/ecmf/' + code_str + '/sfc/fcmean/' + str(year-1) + start_month + '01/var151/ecmf-' + code_str + '_' + str(member) + '_' + str(year-1) + start_month + '01_fcmean_sfc.grb'
 			else:
 				file_name = '/network/group/aopp/predict/AWH002_BEFORT_SEASONAL/' + dataset + '/ecmf/' + code_str + '/sfc/fcmean/' + str(year) + start_month + '01/var151/ecmf-' + code_str + '_' + str(member) + '_' + str(year) + start_month + '01_fcmean_sfc.grb'
 			msl, lats, lons, levs = rgrb.read_in_grib(file_name,'msl',lead=1)

@@ -274,6 +274,68 @@ def compare_smoothings(dataset='CSF-20C', season='DJF'):
 		plt.show()
 
 
+def separate_pressures(dataset='CSF-20C', season='DJF'):
+	#reads in netcdf file of relevant surface pressures
+	file_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_msl_data.nc'
+	mslp_data, lats, lons, levs, times, calendar, t_units = rd_data.read_in_variable(file_name, 'mslp for SAM', lat_name='latitude', lon_name='longitude', time_name='time')
+	
+	#takes zonal mean of surface pressures to be plotted 
+	ensemble_pressures_40S = []
+	ensemble_pressures_65S = []
+	mean_pressures_40S = []
+	mean_pressures_65S = []
+	for year in mslp_data:
+		pressures_40S = []
+		pressures_65S = []
+		for ensemble in year:
+			msl_40S = ensemble[0] #mslp at 40S is stored at netcdf index 0
+			msl_65S = ensemble[1] #mslp at 65S is stored at netcdf index 1
+			
+			zm_40S = np.mean(msl_40S) #takes zonal mean of mslp at 40S
+			zm_65S = np.mean(msl_65S) #takes zonal mean of mslp at 65S
+			
+			pressures_40S.append(zm_40S)
+			pressures_65S.append(zm_65S)
+		mean_pressures_40S.append(np.mean(pressures_40S))
+		mean_pressures_65S.append(np.mean(pressures_65S))
+		ensemble_pressures_40S.append(pressures_40S)
+		ensemble_pressures_65S.append(pressures_65S)
+	
+	#reads in ERA5 sea level pressure data and does same thing with it
+	era5_file = '/network/group/aopp/met_data/MET001_ERA5/data/psl/mon/psl_mon_ERA5_2.5x2.5_195001-197812.nc'
+	era_slp, era_lats, era_lons, era_levs, era_times, era_calendar, era_t_units = rd_data.read_in_variable(era5_file, 'psl')
+	era5_file2 = '/network/group/aopp/met_data/MET001_ERA5/data/psl/mon/psl_mon_ERA5_2.5x2.5_197901-202012.nc'
+	era_slp2, _, _, _, era_times2, _, _ = rd_data.read_in_variable(era5_file2, 'psl')
+	era_slp = np.append(era_slp, era_slp2, axis=0)
+	era_times = np.append(era_times, era_times2)
+	
+	era_pressures_40S = np.array([])
+	era_pressures_65S = np.array([])
+	for era_year_slp in era_slp:
+		era_slp_65S = era_year_slp[10] #index 10 corresponds to latitude 65S
+		era_slp_40S = era_year_slp[18] #index 18 corresponds to latitude 40S
+		
+		zm_40S = np.mean(era_slp_40S) #takes zonal mean of mslp at 40S
+		zm_65S = np.mean(era_slp_65S) #takes zonal mean of mslp at 65S
+		
+		era_pressures_40S = np.append(era_pressures_40S, zm_40S)
+		era_pressures_65S = np.append(era_pressures_65S, zm_65S)
+	
+	#eliminates irrelevant seasons
+	era_pressures_40S, era_years = mask_era(era_pressures_40S, era_times, era_calendar, era_t_units, season)
+	era_pressures_65S, era_years = mask_era(era_pressures_65S, era_times, era_calendar, era_t_units, season)
+	
+	things_to_plot = [[mean_pressures_40S, ensemble_pressures_40S, 'zonal mean 40S', 'blue'], [mean_pressures_65S, ensemble_pressures_65S, 'zonal mean 65S', 'red']]
+	for row in things_to_plot:
+		plt.plot(times, row[1], color='grey')
+		plt.plot(times, row[0], label=row[2], color=row[3])
+	plt.legend()
+	plt.xlabel('years')
+	plt.ylabel('mean surface level pressure')
+	plt.title('Zonal Mean MSLP at 40S and 65S during ' + season + ' in ' + dataset)
+	plt.show()
+
+
 def stat_analysis(dataset='CSF-20C', season='DJF'):
 	#reads in seasonal forecast SAM indices
 	mean_SAM_indices, times, calendar, t_units = read_SAM_indices(dataset, season)
@@ -287,6 +349,7 @@ def stat_analysis(dataset='CSF-20C', season='DJF'):
 	#we want to do same analysis first for Marshall index, then for ERA5 index
 	pairs = [[Marshall_SAM_index, Marshall_years, 'Marshall'], [era_SAM_indices, era_years, 'ERA5']]
 	
+	"""
 	for pair in pairs:
 		#creates arrays containing only SAM indices for years in both forecast dataset and Marshall data
 		paired_my_index, paired_other_index, paired_times = truncate_to_pairs(times, mean_SAM_indices, pair[1], pair[0])
@@ -297,34 +360,36 @@ def stat_analysis(dataset='CSF-20C', season='DJF'):
 		timescales = [2, 3, 5, 10, 15, 20, 30]
 		for timescale in timescales:
 			smooth_and_plot(paired_my_index, paired_other_index, dataset, pair[2], paired_times, timescale, season)
-	
+	"""
 	#compares ERA5 data and Marshall data
 	paired_era_index2, paired_Marshall_index2, Marshall_and_era_times = truncate_to_pairs(era_years, era_SAM_indices, Marshall_years, Marshall_SAM_index)
 	correlate_pairs(paired_era_index2, paired_Marshall_index2, 'ERA5', 'Marshall', season=season)
 
 
 def full_analysis(dataset='CSF-20C', season='DJF'):
-	save_SAM_indices(dataset, season)
+	#save_SAM_indices(dataset, season)
 	graph_SAM_indices(dataset, season)
-	stat_analysis(dataset, season)
+	#stat_analysis(dataset, season)
 
 
 #runs code
+#full_analysis(dataset='CSF-20C', season='MAM') #this is the one I have left to do
+
 datasets = ['CSF-20C', 'ASF-20C']
-seasons = ['DJF', 'JJA']
+seasons = ['DJF', 'MAM', 'JJA', 'SON']
+"""
 for dataset in datasets:
 	for season in seasons:
 		compare_smoothings(dataset=dataset, season=season)
 """
-dataset = 'ASF-20C'
-seasons = 'MAM', 'JJA', 'SON'
-for season in seasons:
-	full_analysis(dataset, season)
-
-dataset = 'CSF-20C'
-season = 'SON'
-full_analysis(dataset, season)
 """
+for dataset in datasets:
+	for season in seasons:
+		separate_pressures(dataset=dataset, season=season)
+"""
+for season in seasons:
+	full_analysis('CSF-20C', season)
+
 """
 years = np.arange(1981, 2001, 1)
 ensemble = np.arange(0, 25, 1)
