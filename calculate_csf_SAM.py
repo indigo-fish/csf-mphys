@@ -16,17 +16,52 @@ import matplotlib.pyplot as plt
 
 Code_dir = 'home/wadh5699/Example_Scripts/Amelia_example_scripts/'
 sys.path.append(Code_dir)
+Code_dir = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
+Figure_dir = Code_dir + 'Figures/'
 
 import reading_in_data_functions as rd_data
 import save_file as sf
 
+def get_zm_pressures(dataset='CSF-20C', season='DJF'):
+	#reads in netcdf file of relevant surface pressures
+	file_name = Code_dir + dataset + '_' + season + '_msl_data.nc'
+	mslp_data, lats, lons, levs, times, calendar, t_units = rd_data.read_in_variable(file_name, 'mslp for SAM', lat_name='latitude', lon_name='longitude', time_name='time')
+	
+	#takes zonal mean of surface pressures to be plotted
+	ensemble_pressures_40S = []
+	ensemble_pressures_65S = []
+	mean_pressures_40S = []
+	mean_pressures_65S = []
+	for year in mslp_data:
+		pressures_40S = []
+		pressures_65S = []
+		for ensemble in year:
+			msl_40S = ensemble[0] #mslp at 40S is stored at netcdf index 0
+			msl_65S = ensemble[1] #mslp at 65S is stored at netcdf index 1
+			
+			zm_40S = np.mean(msl_40S) #takes zonal mean of mslp at 40S
+			zm_65S = np.mean(msl_65S) #takes zonal mean of mslp at 65S
+			
+			pressures_40S.append(zm_40S)
+			pressures_65S.append(zm_65S)
+		mean_pressures_40S.append(np.mean(pressures_40S))
+		mean_pressures_65S.append(np.mean(pressures_65S))
+		ensemble_pressures_40S.append(pressures_40S)
+		ensemble_pressures_65S.append(pressures_65S)
+	
+	return mean_pressures_40S, mean_pressures_65S, ensemble_pressures_40S, ensemble_pressures_65S
 
 def get_SAM_indices(dataset='CSF-20C', season='DJF'):
 	#reads in netcdf file of relevant surface pressures
-	file_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_msl_data.nc'
+	file_name = Code_dir + dataset + '_' + season + '_msl_data.nc'
 	mslp_data, lats, lons, levs, times, calendar, t_units = rd_data.read_in_variable(file_name, 'mslp for SAM', lat_name='latitude', lon_name='longitude', time_name='time')
 	
-	#takes zonal mean of surface pressures and subtracts to find an unnormalized SAM index
+	mean_pressures_40S, mean_pressures_65S, _, _ = get_zm_pressures(dataset=dataset, season=season)
+	
+	norm_40S = np.mean(mean_pressures_40S)
+	norm_65S = np.mean(mean_pressures_65S)
+	
+	"""
 	yearly_SAM_indices = []
 	mean_SAM_indices = []
 	SAM_stdevs = []
@@ -38,7 +73,6 @@ def get_SAM_indices(dataset='CSF-20C', season='DJF'):
 			
 			zm_40S = np.mean(msl_40S) #takes zonal mean of mslp at 40S
 			zm_65S = np.mean(msl_65S) #takes zonal mean of mslp at 65S
-			
 			SAM_index = zm_40S - zm_65S #subtracts surface pressures to find unnormalized SAM index
 			ens_SAM_indices.append(SAM_index)
 		yearly_SAM_indices.append(ens_SAM_indices) #stores vectors of SAM indices from all ensemble members for each year
@@ -54,6 +88,34 @@ def get_SAM_indices(dataset='CSF-20C', season='DJF'):
 	mean_SAM_indices /= std_norm
 	yearly_SAM_indices -= mean_norm
 	yearly_SAM_indices /= std_norm
+	"""
+	yearly_SAM_indices = []
+	mean_SAM_indices = []
+	SAM_stdevs = []
+	for year in mslp_data:
+		ens_SAM_indices = []
+		for ensemble in year:
+			msl_40S = ensemble[0] #mslp at 40S is stored at netcdf index 0
+			msl_65S = ensemble[1] #mslp at 65S is stored at netcdf index 1
+			
+			zm_40S = np.mean(msl_40S) #takes zonal mean of mslp at 40S
+			zm_65S = np.mean(msl_65S) #takes zonal mean of mslp at 65S
+			SAM_index = zm_40S / norm_40S - zm_65S / norm_65S #subtracts surface pressures to find unnormalized SAM index
+			ens_SAM_indices.append(SAM_index)
+		yearly_SAM_indices.append(ens_SAM_indices) #stores vectors of SAM indices from all ensemble members for each year
+		mean_SAM_indices.append(np.mean(ens_SAM_indices)) #stores ensemble mean SAM index for each year
+		SAM_stdevs.append(np.std(ens_SAM_indices)) #stores standard deviation of SAM index for each year
+	
+	
+	#normalizes SAM indices
+	mean_norm = np.mean(mean_SAM_indices)
+	std_norm = np.std(mean_SAM_indices)
+	
+	mean_SAM_indices -= mean_norm
+	mean_SAM_indices /= std_norm
+	yearly_SAM_indices -= mean_norm
+	yearly_SAM_indices /= std_norm
+	SAM_stdevs /= std_norm
 	
 	return yearly_SAM_indices, mean_SAM_indices, SAM_stdevs, times, calendar, t_units
 
@@ -63,14 +125,14 @@ def save_SAM_indices(dataset='CSF-20C', season='DJF'):
 	yearly_SAM_indices, mean_SAM_indices, SAM_stdevs, times, calendar, t_units = get_SAM_indices(dataset, season)
 	
 	#saves normalized SAM indices as netcdf files
-	mean_destination = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_sam_mean_data.nc'
+	mean_destination = Code_dir + dataset + '_' + season + '_sam_mean_data.nc'
 	mean_description = 'mean Marshall SAM index from ' + dataset + ' during ' + season
 	save = sf.save_file(mean_destination, mean_description)
 	save.add_times(times, calendar, t_units, time_name='time')
 	save.add_variable(np.array(mean_SAM_indices), 'SAM index', ('time'))
 	save.close_file()
 	
-	ensemble_destination = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_sam_ensemble_data.nc'
+	ensemble_destination = Code_dir + dataset + '_' + season + '_sam_ensemble_data.nc'
 	ensemble_description = 'Marshall SAM index from ' + dataset + ' ensemble during ' + season
 	ens_len = len(yearly_SAM_indices[0])
 	dim1 = np.arange(0, ens_len, 1)
@@ -80,7 +142,7 @@ def save_SAM_indices(dataset='CSF-20C', season='DJF'):
 	save2.add_variable(np.array(yearly_SAM_indices), 'SAM index', ('time', 'ensemble member'))
 	save2.close_file()
 	
-	variation_destination = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_sam_variation_data.nc'
+	variation_destination = Code_dir + dataset + '_' + season + '_sam_variation_data.nc'
 	variation_description = 'standard deviation of Marshall SAM index from ' + dataset + ' during ' + season
 	save3 = sf.save_file(variation_destination, variation_description)
 	save3.add_times(times, calendar, t_units, time_name='time')
@@ -90,17 +152,17 @@ def save_SAM_indices(dataset='CSF-20C', season='DJF'):
 
 def read_SAM_indices(dataset='CSF-20C', season='DJF'):
 	
-	mean_source = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_sam_mean_data.nc'
+	mean_source = Code_dir + dataset + '_' + season + '_sam_mean_data.nc'
 	mean_read = Dataset(mean_source)
 	mean_data = mean_read.variables['SAM index'][:]
 	
-	ensemble_source = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_sam_ensemble_data.nc'
-	ensemble_read = Dataset(ensemble_source)
-	ensemble_data = mean_read.variables['SAM index'][:]
+	#ensemble_source = Code_dir + dataset + '_' + season + '_sam_ensemble_data.nc'
+	#ensemble_read = Dataset(ensemble_source)
+	#ensemble_data = mean_read.variables['SAM index'][:]
 	
-	variation_source = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_sam_variation_data.nc'
-	variation_read = Dataset(variation_source)
-	variation_data = variation_read.variables['SAM index'][:]
+	#variation_source = Code_dir + dataset + '_' + season + '_sam_variation_data.nc'
+	#variation_read = Dataset(variation_source)
+	#variation_data = variation_read.variables['SAM index'][:]
 	
 	times, calendar, units = rd_data.read_time_dimension(mean_source, time_name = 'time')
 	
@@ -188,10 +250,25 @@ def graph_SAM_indices(dataset='CSF-20C', season='DJF'):
 	plt.xlabel('Year')
 	plt.ylabel('Normalized SAM Index')
 	plt.legend()
-	figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_' + season + '_Normalized_SAM.png'
+	
+	figure_name = Figure_dir + dataset + '_' + season + '_Normalized_SAM.png'
 	plt.savefig(figure_name)
 	plt.show()
 
+
+def graph_stdev(dataset='CSF-20C', season='DJF'):
+	#reads in standard deviations from netcdf
+	variation_source = Code_dir + dataset + '_' + season + '_sam_variation_data.nc'
+	variation_read = Dataset(variation_source)
+	variation_data = variation_read.variables['SAM index'][:]
+	
+	times, calendar, units = rd_data.read_time_dimension(mean_source, time_name = 'time')
+	
+	plt.plot(times, variation_data)
+	plt.xlabel('Year')
+	plt.ylabel('Normalized SAM Index')
+	plt.legend()
+	figure_name = Figure_dir + dataset + '_' + season
 
 def truncate_to_pairs(times1, data1, times2, data2):
 	#creates arrays containing only data for years in both datasets provided
@@ -226,7 +303,7 @@ def correlate_pairs(data1, data2, label1, label2, season='DJF', smoothing=None):
 	plt.ylabel(label2 + ' SAM')
 	plt.legend()
 	plt.annotate(f"R squared: {res.rvalue**2:.6f}", (0.2, 0.2), xycoords='axes fraction')
-	figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + label1 + '_' + label2 + '_' + season + '_SAM_correlation'
+	figure_name = Figure_dir + label1 + '_' + label2 + '_' + season + '_SAM_correlation'
 	if smoothing==None: figure_name += '.png'
 	else: figure_name += '_' + str(smoothing) + '_average.png'
 	plt.savefig(figure_name)
@@ -265,20 +342,23 @@ def compare_smoothings(dataset='CSF-20C', season='DJF'):
 			smoothed_other_index, _ = running_mean(paired_other_index, paired_times, smoothing)
 			res = linregress(smoothed_my_index, smoothed_other_index)
 			r_squares.append(res.rvalue**2)
-		plt.plot(smoothings, r_squares)
-		plt.xlabel('years averaged')
-		plt.ylabel('R squared value')
-		plt.title('Correlation strength between ' + dataset + ' and ' + pair[2] + ' for different time scales')
-		figure_name = figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_' + pair[2] + '_' + season + '_SAM_correlation_depending_on_averaging.png'
-		plt.savefig(figure_name)
-		plt.show()
+		plt.plot(smoothings, r_squares, label=pair[2])
+	plt.xlabel('years averaged')
+	plt.ylabel('R squared value')
+	plt.legend()
+	plt.title('Correlation strength between ' + dataset + ' during ' + season + ' and ERA/Marshall')
+	figure_name = Figure_dir + dataset + '_' + season + '_SAM_correlation_depending_on_averaging.png'
+	plt.savefig(figure_name)
+	plt.show()
 
 
 def separate_pressures(dataset='CSF-20C', season='DJF'):
+	
 	#reads in netcdf file of relevant surface pressures
-	file_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/' + dataset + '_' + season + '_msl_data.nc'
+	file_name = Code_dir + dataset + '_' + season + '_msl_data.nc'
 	mslp_data, lats, lons, levs, times, calendar, t_units = rd_data.read_in_variable(file_name, 'mslp for SAM', lat_name='latitude', lon_name='longitude', time_name='time')
 	
+	"""
 	#takes zonal mean of surface pressures to be plotted 
 	ensemble_pressures_40S = []
 	ensemble_pressures_65S = []
@@ -300,6 +380,8 @@ def separate_pressures(dataset='CSF-20C', season='DJF'):
 		mean_pressures_65S.append(np.mean(pressures_65S))
 		ensemble_pressures_40S.append(pressures_40S)
 		ensemble_pressures_65S.append(pressures_65S)
+	"""
+	mean_pressures_40S, mean_pressures_65S, ensemble_pressures_40S, ensemble_pressures_65S = get_zm_pressures(dataset=dataset, season=season)
 	
 	#reads in ERA5 sea level pressure data and does same thing with it
 	era5_file = '/network/group/aopp/met_data/MET001_ERA5/data/psl/mon/psl_mon_ERA5_2.5x2.5_195001-197812.nc'
@@ -329,10 +411,14 @@ def separate_pressures(dataset='CSF-20C', season='DJF'):
 	for row in things_to_plot:
 		plt.plot(times, row[1], color='grey')
 		plt.plot(times, row[0], label=row[2], color=row[3])
+	plt.plot(era_years, era_pressures_40S, color='black')
+	plt.plot(era_years, era_pressures_65S, color='black')
 	plt.legend()
 	plt.xlabel('years')
 	plt.ylabel('mean surface level pressure')
 	plt.title('Zonal Mean MSLP at 40S and 65S during ' + season + ' in ' + dataset)
+	figure_name = Figure_dir + dataset + '_' + season + '_40S_and_65S_Pressures.png'
+	plt.savefig(figure_name)
 	plt.show()
 
 
@@ -349,7 +435,7 @@ def stat_analysis(dataset='CSF-20C', season='DJF'):
 	#we want to do same analysis first for Marshall index, then for ERA5 index
 	pairs = [[Marshall_SAM_index, Marshall_years, 'Marshall'], [era_SAM_indices, era_years, 'ERA5']]
 	
-	"""
+	
 	for pair in pairs:
 		#creates arrays containing only SAM indices for years in both forecast dataset and Marshall data
 		paired_my_index, paired_other_index, paired_times = truncate_to_pairs(times, mean_SAM_indices, pair[1], pair[0])
@@ -360,16 +446,16 @@ def stat_analysis(dataset='CSF-20C', season='DJF'):
 		timescales = [2, 3, 5, 10, 15, 20, 30]
 		for timescale in timescales:
 			smooth_and_plot(paired_my_index, paired_other_index, dataset, pair[2], paired_times, timescale, season)
-	"""
+	
 	#compares ERA5 data and Marshall data
 	paired_era_index2, paired_Marshall_index2, Marshall_and_era_times = truncate_to_pairs(era_years, era_SAM_indices, Marshall_years, Marshall_SAM_index)
 	correlate_pairs(paired_era_index2, paired_Marshall_index2, 'ERA5', 'Marshall', season=season)
 
 
 def full_analysis(dataset='CSF-20C', season='DJF'):
-	#save_SAM_indices(dataset, season)
+	save_SAM_indices(dataset, season)
 	graph_SAM_indices(dataset, season)
-	#stat_analysis(dataset, season)
+	stat_analysis(dataset, season)
 
 
 #runs code
@@ -385,44 +471,16 @@ for dataset in datasets:
 """
 for dataset in datasets:
 	for season in seasons:
+		graph_SAM_indices(dataset=dataset, season=season)
+"""
+"""
+for dataset in datasets:
+	for season in seasons:
 		separate_pressures(dataset=dataset, season=season)
 """
-for season in seasons:
-	full_analysis('CSF-20C', season)
 
-"""
-years = np.arange(1981, 2001, 1)
-ensemble = np.arange(0, 25, 1)
-ens_SAM_indices = []
-for member in ensemble:
-	SAM_indices = []
-	for year in years:		
-		msl_40S = msl[192,:] #index 192 in latitudes corresponds to 40S
-		msl_65S = msl[220,:] #index 220 in latitudes corresponds to 65S
-		
-		zm_40S = sum(msl_40S) / len(msl_40S) #zonal mean of 40S mean surface level pressure
-		zm_65S = sum(msl_65S) / len(msl_65S) #zonal mean of 65S mean surface level pressure
-		norm_40S = 10000 #I don't know what the normalization factor for 40S should be
-		norm_65S = 10000 #I don't know what the normalization factor for 65S should be
-		SAM_index = zm_40S / norm_40S - zm_65S / norm_65S #SAM index defined as difference of normalized zonal mean surface pressures
-		SAM_indices.append(SAM_index)
-	ens_SAM_indices.append(SAM_indices)
+for dataset in datasets:
+	for season in seasons:
+		full_analysis('ASF-20C', season)
 
-mean_SAM_indices = []
-indices = np.arange(0, len(years), 1)
-for index in indices:
-	all_SAM_indices = []
-	for member in ens_SAM_indices:
-		all_SAM_indices.append(member[index])
-	mean = sum(all_SAM_indices) / len(all_SAM_indices)
-	mean_SAM_indices.append(mean)
 
-import matplotlib.pyplot as plt
-
-#for SAM_indices in ens_SAM_indices:
-#	plt.plot(years, SAM_indices)
-plt.plot(years, mean_SAM_indices)
-plt.show()
-figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/my_mean_SAM_indices'
-plt.savefig(figure_name)
-"""
