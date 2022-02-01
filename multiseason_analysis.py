@@ -52,8 +52,36 @@ def graph_all_SAM_indices(dataset='CSF-20C'):
 	plt.savefig(figure_name)
 	plt.show()
 
-#runs code
-datasets = ['CSF-20C', 'ASF-20C']
-for dataset in datasets:
-	graph_all_SAM_indices(dataset)
+def short_correlations(dataset='CSF-20C', season='DJF', timescale = 20):
+	#does correlation analysis on 20 year subsets of longer datasets
+	
+	#reads in the 3 SAM index datasets as usual
+	mean_SAM_indices, times, calendar, t_units = calc1.read_SAM_indices(dataset, season)
+	Marshall_SAM_indices, Marshall_years = rd_data.read_Marshall_SAM_idx(season)
+	era_SAM_indices, era_years = calc1.get_era_SAM_indices(season)
+	
+	pairs = [[Marshall_SAM_indices, Marshall_years, 'Marshall'], [era_SAM_indices, era_years, 'ERA5']]
+	for pair in pairs:
+		paired_my_index, paired_other_index, paired_times = calc1.truncate_to_pairs(times, mean_SAM_indices, pair[1], pair[0])
+		start_index = 0
+		plt.clf()
+		while start_index < len(paired_times) - timescale:
+			x = paired_my_index[start_index:start_index+timescale]
+			y = paired_other_index[start_index:start_index+timescale]
+			label = str(paired_times[start_index]) + '-' + str(paired_times[start_index + timescale])
+			plt.scatter(x, y, label=label)
+			res = linregress(x, y)
+			line_y = []
+			for x_pt in x:
+				line_y.append(res.slope * x_pt + res.intercept)
+			plt.plot(x, line_y)
+			start_index += 10
+		plt.xlabel(dataset + ' SAM index')
+		plt.ylabel(pair[2] + ' SAM index')
+		plt.title('Correlation Between ' + season + ' ' + dataset + ' and ' + pair[2] + ' In Different ' + str(timescale) + '-year Periods')
+		plt.legend()
+		figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_' + season + '_' + pair[2] + '_'  + str(timescale) + 'Period_Correlations.png'
+		plt.savefig(figure_name)
+		plt.show()
 
+#use run_sam_analysis to run code
