@@ -55,13 +55,6 @@ def conversion(dataset='CSF-20C', season='DJF'):
 	for year in years:
 		ensemble_surface_pressures = []
 		for member in ensemble:
-			"""
-			#temporary code to address the missing data in CSF-20 February 1936
-			if year == 1936 and season == 'MAM' and dataset == 'CSF-20C':
-				file_name = '/network/group/aopp/predict/AWH002_BEFORT_SEASONAL/' + dataset + '/ecmf/' + code_str + '/sfc/fcmean/' + str(year-1) + start_month + '01/var151/ecmf-' + code_str + '_' + str(member) + '_' + str(year-1) + start_month + '01_fcmean_sfc.grb'
-			else:
-				file_name = '/network/group/aopp/predict/AWH002_BEFORT_SEASONAL/' + dataset + '/ecmf/' + code_str + '/sfc/fcmean/' + str(year) + start_month + '01/var151/ecmf-' + code_str + '_' + str(member) + '_' + str(year) + start_month + '01_fcmean_sfc.grb'
-			"""
 			file_name = '/network/group/aopp/predict/AWH002_BEFORT_SEASONAL/' + dataset + '/ecmf/' + code_str + '/sfc/fcmean/' + str(year) + start_month + '01/var151/ecmf-' + code_str + '_' + str(member) + '_' + str(year) + start_month + '01_fcmean_sfc.grb'
 			msl, lats, lons, levs = rgrb.read_in_grib(file_name,'msl',lead=1)
 			
@@ -70,7 +63,7 @@ def conversion(dataset='CSF-20C', season='DJF'):
 			ensemble_surface_pressures.append([msl_40S, msl_65S])
 		annual_surface_pressures.append(ensemble_surface_pressures)
 	
-	file_name = dataset + '_' + season + '_msl_data.nc'
+	file_name = 'Data/' + dataset + '_' + season + '_msl_data.nc'
 	description = 'mean surface level pressure at 40S and 65S from ' + dataset + ' for ' + str(ens_len) + ' ensemble members during season ' + season
 	dim1 = np.array(ensemble)
 	dim2 = np.array([-40, -65])
@@ -131,7 +124,7 @@ def convert_ssts(dataset='CSF-20C', season='DJF'):
 			ensemble_ssts.append(sst)
 		annual_ssts.append(ensemble_ssts)
 	
-	file_name = dataset + '_' + season + '_sst_data.nc'
+	file_name = 'Data/' + dataset + '_' + season + '_sst_data.nc'
 	description = 'sea surface temperature from ' + dataset + ' for ' + str(ens_len) + ' ensemble members during season ' + season
 	dim1 = np.array(ensemble)
 	dim2 = np.array(lats)

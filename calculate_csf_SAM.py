@@ -19,6 +19,7 @@ sys.path.append(Code_dir)
 #sets directories for accessing netcdf files and figures
 Code_dir = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
 Figure_dir = Code_dir + 'Figures/'
+Data_dir = Code_dir + 'Data/'
 
 import reading_in_data_functions as rd_data
 import save_file as sf
@@ -27,7 +28,7 @@ def get_zm_pressures(dataset='CSF-20C', season='DJF'):
 	#returns zonally averaged pressures at 40S and 65S from netcdf files, both ensemble mean and individual ensemble members
 	
 	#reads in netcdf file of relevant surface pressures
-	file_name = Code_dir + dataset + '_' + season + '_msl_data.nc'
+	file_name = Data_dir + dataset + '_' + season + '_msl_data.nc'
 	mslp_data, lats, lons, levs, times, calendar, t_units = rd_data.read_in_variable(file_name, 'mslp for SAM', lat_name='latitude', lon_name='longitude', time_name='time')
 	
 	#takes zonal mean of surface pressures to be plotted
@@ -58,7 +59,7 @@ def get_SAM_indices(dataset='CSF-20C', season='DJF'):
 	#reads in pressure data from netcdf files, converts it to netcdf files, and returns it
 	
 	#reads in netcdf file of surface pressures to access times, calendar, and time units
-	file_name = Code_dir + dataset + '_' + season + '_msl_data.nc'
+	file_name = Data_dir + dataset + '_' + season + '_msl_data.nc'
 	mslp_data, lats, lons, levs, times, calendar, t_units = rd_data.read_in_variable(file_name, 'mslp for SAM', lat_name='latitude', lon_name='longitude', time_name='time')
 	
 	#gets ensemble mean of zonal mean surface pressures at both latitudes
@@ -67,36 +68,6 @@ def get_SAM_indices(dataset='CSF-20C', season='DJF'):
 	#takes seasonal average of zonal mean surface pressures at both latitudes
 	norm_40S = np.mean(mean_pressures_40S)
 	norm_65S = np.mean(mean_pressures_65S)
-	
-	"""
-	#old code which calculated SAM index by subtracting surface pressures rather than normalized surface pressures
-	yearly_SAM_indices = []
-	mean_SAM_indices = []
-	SAM_stdevs = []
-	for year in mslp_data:
-		ens_SAM_indices = []
-		for ensemble in year:
-			msl_40S = ensemble[0] #mslp at 40S is stored at netcdf index 0
-			msl_65S = ensemble[1] #mslp at 65S is stored at netcdf index 1
-			
-			zm_40S = np.mean(msl_40S) #takes zonal mean of mslp at 40S
-			zm_65S = np.mean(msl_65S) #takes zonal mean of mslp at 65S
-			SAM_index = zm_40S - zm_65S #subtracts surface pressures to find unnormalized SAM index
-			ens_SAM_indices.append(SAM_index)
-		yearly_SAM_indices.append(ens_SAM_indices) #stores vectors of SAM indices from all ensemble members for each year
-		mean_SAM_indices.append(np.mean(ens_SAM_indices)) #stores ensemble mean SAM index for each year
-		SAM_stdevs.append(np.std(ens_SAM_indices)) #stores standard deviation of SAM index for each year
-	
-	
-	#normalizes SAM indices
-	mean_norm = np.mean(mean_SAM_indices)
-	std_norm = np.std(mean_SAM_indices)
-	
-	mean_SAM_indices -= mean_norm
-	mean_SAM_indices /= std_norm
-	yearly_SAM_indices -= mean_norm
-	yearly_SAM_indices /= std_norm
-	"""
 	
 	#gets arrays of full ensemble and ensemble mean surface pressures, and each year's standard deviation
 	ensemble_SAM_indices = []
@@ -135,14 +106,14 @@ def save_SAM_indices(dataset='CSF-20C', season='DJF'):
 	yearly_SAM_indices, mean_SAM_indices, SAM_stdevs, times, calendar, t_units = get_SAM_indices(dataset, season)
 	
 	#saves normalized SAM indices as netcdf files
-	mean_destination = Code_dir + dataset + '_' + season + '_sam_mean_data.nc'
+	mean_destination = Data_dir + dataset + '_' + season + '_sam_mean_data.nc'
 	mean_description = 'mean Marshall SAM index from ' + dataset + ' during ' + season
 	save = sf.save_file(mean_destination, mean_description)
 	save.add_times(times, calendar, t_units, time_name='time')
 	save.add_variable(np.array(mean_SAM_indices), 'SAM index', ('time'))
 	save.close_file()
 	
-	ensemble_destination = Code_dir + dataset + '_' + season + '_sam_ensemble_data.nc'
+	ensemble_destination = Data_dir + dataset + '_' + season + '_sam_ensemble_data.nc'
 	ensemble_description = 'Marshall SAM index from ' + dataset + ' ensemble during ' + season
 	ens_len = len(yearly_SAM_indices[0])
 	dim1 = np.arange(0, ens_len, 1)
@@ -152,7 +123,7 @@ def save_SAM_indices(dataset='CSF-20C', season='DJF'):
 	save2.add_variable(np.array(yearly_SAM_indices), 'SAM index', ('time', 'ensemble member'))
 	save2.close_file()
 	
-	variation_destination = Code_dir + dataset + '_' + season + '_sam_variation_data.nc'
+	variation_destination = Data_dir + dataset + '_' + season + '_sam_variation_data.nc'
 	variation_description = 'standard deviation of Marshall SAM index from ' + dataset + ' during ' + season
 	save3 = sf.save_file(variation_destination, variation_description)
 	save3.add_times(times, calendar, t_units, time_name='time')
@@ -162,16 +133,16 @@ def save_SAM_indices(dataset='CSF-20C', season='DJF'):
 
 def read_SAM_indices(dataset='CSF-20C', season='DJF'):
 	#reads and returns ensemble mean SAM index from netcdf
-	mean_source = Code_dir + dataset + '_' + season + '_sam_mean_data.nc'
+	mean_source = Data_dir + dataset + '_' + season + '_sam_mean_data.nc'
 	mean_read = Dataset(mean_source)
 	mean_data = mean_read.variables['SAM index'][:]
 	
 	#I think because this one has different dimensions from the others I need to change the way it's read in
-	#ensemble_source = Code_dir + dataset + '_' + season + '_sam_ensemble_data.nc'
+	#ensemble_source = Data_dir + dataset + '_' + season + '_sam_ensemble_data.nc'
 	#ensemble_read = Dataset(ensemble_source)
 	#ensemble_data = mean_read.variables['SAM index'][:]
 	
-	#variation_source = Code_dir + dataset + '_' + season + '_sam_variation_data.nc'
+	#variation_source = Data_dir + dataset + '_' + season + '_sam_variation_data.nc'
 	#variation_read = Dataset(variation_source)
 	#variation_data = variation_read.variables['SAM index'][:]
 	
@@ -301,7 +272,7 @@ def graph_SAM_indices(dataset='CSF-20C', season='DJF'):
 
 def graph_stdev(dataset='CSF-20C', season='DJF'):
 	#reads in and plots by year standard deviations from netcdf
-	variation_source = Code_dir + dataset + '_' + season + '_sam_variation_data.nc'
+	variation_source = Data_dir + dataset + '_' + season + '_sam_variation_data.nc'
 	variation_read = Dataset(variation_source)
 	variation_data = variation_read.variables['SAM index'][:]
 	
@@ -409,7 +380,7 @@ def compare_smoothings(dataset='CSF-20C', season='DJF'):
 def separate_pressures(dataset='CSF-20C', season='DJF'):
 	#plots pressure at each of 40S and 65S throughout 20th century
 	#reads in netcdf file of relevant surface pressures
-	file_name = Code_dir + dataset + '_' + season + '_msl_data.nc'
+	file_name = Data_dir + dataset + '_' + season + '_msl_data.nc'
 	mslp_data, lats, lons, levs, times, calendar, t_units = rd_data.read_in_variable(file_name, 'mslp for SAM', lat_name='latitude', lon_name='longitude', time_name='time')
 	
 	mean_pressures_40S, mean_pressures_65S, ensemble_pressures_40S, ensemble_pressures_65S = get_zm_pressures(dataset=dataset, season=season)
