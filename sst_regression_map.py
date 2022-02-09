@@ -26,8 +26,7 @@ def sst_regression(season, dataset='CSF-20C'):
     variable = 'sst'
     
     #reads in previously calculated netcdf of SAM indices from given dataset
-    my_SAM_index, my_times, calendar, units = calculate_csf_SAM.read_SAM_indices(dataset=dataset, season=season)
-    print(my_times[len(my_times) - 1])
+    ensemble_SAM_index, my_times, calendar, units = calculate_csf_SAM.read_SAM_ensemble(dataset=dataset, season=season)
     # reads in Marshall SAM index
     Marshall_SAM_idx, Marshall_years = reading_in_data_functions.read_Marshall_SAM_idx(season=season)
     
@@ -44,11 +43,39 @@ def sst_regression(season, dataset='CSF-20C'):
     year_mask_Marshall = (Marshall_years>=start_year)&(Marshall_years<=end_year)
     Marshall_SAM_idx = Marshall_SAM_idx[year_mask_Marshall]
     my_year_mask = (my_times>=start_year)&(my_times<=end_year)
-    my_SAM_index = my_SAM_index[my_year_mask]
+    ensemble_SAM_index = ensemble_SAM_index[my_year_mask]
+    mean_sst = []
+    mean_sam = []
+    for (sst_yr, sam_yr) in zip(var_am, ensemble_SAM_index):
+        mean_sst.append(np.mean(sst_yr))
+        mean_sam.append(np.mean(sam_yr))
+    
+    plt.plot(mean_sst, mean_sam)
+    print(mean_sst)
+    print(mean_sam)
+    
+    """
+    #regression map is expecting 2 time series, so pretend ensembles are time series
+    unwrapped_sst = []
+    unwrapped_sam = []
+    for (sst_yr, sam_yr) in zip(var_am, ensemble_SAM_index):
+        for (sst_ensemble, sam_ensemble) in zip(sst_yr, sam_yr):
+            unwrapped_sst.append(sst_ensemble)
+            unwrapped_sam.append(sam_ensemble)
+    """
+    """
+    unwrapped_sst = []
+    unwrapped_sam = []
+    for (sst_yr, sam_yr) in zip(var_am, ensemble_SAM_index):
+        unwrapped_sst.append(sst_yr[0])
+        unwrapped_sam.append(sam_yr[0])
+    unwrapped_sst = np.array(unwrapped_sst)
+    unwrapped_sam = np.array(unwrapped_sam)
     
     # calculate regression pattern
     #regress_coeff,corr,pvals = analysis_functions.regress_map(my_SAM_index,var_am)
-    regress_coeff,corr,pvals = analysis_functions.regress_map(Marshall_SAM_idx,var_am)
+    regress_coeff,corr,pvals = analysis_functions.regress_map(unwrapped_sam, unwrapped_sst)
+    print(corr)
     
     # make some plots
     plt.figure(figsize=(15,15))
@@ -80,7 +107,9 @@ def sst_regression(season, dataset='CSF-20C'):
     figure_name = Figure_dir + 'SAM_pattern_' + dataset + '_' + season + '_' + variable + str(start_year)+'-'+str(end_year)+'.png'
     print('saving to %s' % (figure_name))
     plt.savefig(figure_name,bbox_inches='tight')
-    #plt.show()
+    """
+    plt.show()
+
 
 seasons = ['DJF']
 for season in seasons:

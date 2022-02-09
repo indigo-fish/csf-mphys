@@ -11,7 +11,7 @@ import os, sys
 
 Code_dir = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
 Figure_dir = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' # directory to save figures to 
-start_year,end_year = 1958,2009 # choose the period over which to calculate regression pattern
+start_year,end_year = 1982,2009 # choose the period over which to calculate regression pattern
 
 sys.path.append(Code_dir)
 import plotting_functions
@@ -53,12 +53,12 @@ def runregression(variable, season, level_to_choose=None, dataset=None):
     # calculate regression pattern
     regress_coeff,corr,pvals = analysis_functions.regress_map(SAM_idx,var_am)
     
-    
     # make some plots
     plt.figure(figsize=(15,15))
     gs = gridspec.GridSpec(3,1,height_ratios=[5,10,0.5])
     
-    clevs = np.linspace(np.min(regress_coeff), np.max(regress_coeff), 10)
+    if variable=='tos': clevs = np.linspace(-50, 50, 10)
+    else: clevs = np.linspace(min(corr), max(corr), 10)
     #clevs = np.append(-a[::-1],a) # contour level
     subplot_labels = ['a)','b)']
     
@@ -69,8 +69,8 @@ def runregression(variable, season, level_to_choose=None, dataset=None):
         plotting_functions.add_significance(pvals,lons,lats,clevs=np.array([0,0.05]))  # plot hatching to show where p values are less than 0.05, i.e. stat significant
         ax.text(-0.05,1, subplot_labels[i], transform=ax.transAxes,fontsize=25, va='top', ha='right')
         if i == 0:
-            title_str = variable + str(level_to_choose) + ' SAM pattern in ' + season + ' from ERA5 (m)'
-            if not dataset==None: title_str + ' and ' + dataset
+            if dataset==None: title_str = variable + str(level_to_choose) + ' SAM pattern in ' + season + ' from ERA5 (m)'
+            else: title_str = variable + str(level_to_choose) + ' SAM pattern in ' + season + ' from ERA5 (m) and ' + dataset
             plt.title(title_str,fontsize=30) 
             plotting_functions.add_latlon_labels(ax,xticks=np.arange(-180,181,60),yticks=np.arange(-80,81,20)) # add latitude longitude labels
         ax.set_extent([-180,179,-90,20],crs=ccrs.PlateCarree())

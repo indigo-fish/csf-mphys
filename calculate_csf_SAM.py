@@ -150,6 +150,15 @@ def read_SAM_indices(dataset='CSF-20C', season='DJF'):
 	
 	return mean_data, times, calendar, units
 
+def read_SAM_ensemble(dataset='CSF-20C', season='DJF'):
+    ensemble_source = Data_dir + dataset + '_' + season + '_sam_ensemble_data.nc'
+    ensemble_read = Dataset(ensemble_source)
+    ensemble_data = ensemble_read.variables['SAM index'][:]
+    
+    times, calendar, units = rd_data.read_time_dimension(ensemble_source, time_name = 'time')
+    
+    return ensemble_data, times, calendar, units
+
 
 def mask_era(all_SAM_indices, times, calendar, units, season='DJF'):
 	#reduces ERA SAM index data to desired season in same way as reading_in_data_functions.calculate_annual_mean
@@ -218,6 +227,42 @@ def get_era_SAM_indices(season='DJF'):
 	era_SAM_indices /= era_std_norm
 	
 	return era_SAM_indices, era_years
+
+
+def get_seas5_SAM_indices(season='DJF'):
+	
+	#reads in ERA5 sea level pressure data and uses it to produce same type of SAM index
+	seas5_file = '/network/aopp/hera/mad/patterson/MPhys/SEAS5_ensemble_means/SEAS5_msl_ensemble_mean_25members_DJF_init_November_1982_2017.nc'
+	seas_slp, seas_lats, seas_lons, seas_levs, seas_times, seas_calendar, seas_t_units = rd_data.read_in_variable(seas5_file, 'psl')
+	
+	#stores arrays of zonal mean slp from ERA5 at both latitudes
+	mean_pressures_40S = np.array([])
+	mean_pressures_65S = np.array([])
+	for seas_year_slp in seas_slp:
+		seas_slp_65S = seas_year_slp[10] #index 10 corresponds to latitude 65S
+		seas_slp_40S = seas_year_slp[18] #index 18 corresponds to latitude 40S
+		zm_40S = np.mean(seas_slp_40S) #takes zonal mean of mslp at 40S
+		zm_65S = np.mean(seas_slp_65S) #takes zonal mean of mslp at 65S
+		mean_pressures_40S = np.append(mean_pressures_40S, zm_40S)
+		mean_pressures_65S = np.append(mean_pressures_65S, zm_65S)
+	
+	#takes seasonal average of zonal mean surface pressures at both latitudes
+	norm_40S = np.mean(mean_pressures_40S)
+	norm_65S = np.mean(mean_pressures_65S)
+	
+	seas_SAM_indices = np.array([])
+	for pressure_40S, pressure_65S in zip(mean_pressures_40S, mean_pressures_65S):
+		seas_SAM_index = pressure_40S / norm_40S - pressure_65S / norm_65S #subtracts normalized surface pressures to find unnormalized SAM index
+		seas_SAM_indices = np.append(seas_SAM_indices, seas_SAM_index)
+	
+	#normalizes ERA SAM indices
+	seas_mean_norm = np.mean(seas_SAM_indices)
+	seas_std_norm = np.std(seas_SAM_indices)
+	
+	seas_SAM_indices -= seas_mean_norm
+	seas_SAM_indices /= seas_std_norm
+	
+	return seas_SAM_indices, seas_years
 
 
 def graph_SAM_indices(dataset='CSF-20C', season='DJF'):
