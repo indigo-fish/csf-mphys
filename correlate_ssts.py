@@ -46,20 +46,39 @@ def cal_grid_point_correlations(X,Y,return_pvals=False):
 	if return_pvals == True: return corrs_map, pvals_map
 	else: return corrs_map
 
-def make_corr_map(dataset_file, era_file):
+def make_corr_map(dataset, season):
+	dataset_file = Data_dir + 'CSF-20C_' + season + '_sst_data.nc'
 	#read in both sst maps
 	ds_var, ds_lats, ds_lons, ds_levs, ds_times, ds_calendar, ds_t_units = reading_in_data_functions.read_in_variable(dataset_file, 'sst')
-	era_var, era_lats, era_lons, era_levs, era_times, era_calendar, era_t_units = reading_in_data_functions.read_in_variable(era_file, 'sst')
+	era_file = '/network/group/aopp/met_data/MET001_ERA5/data/tos/mon/tos_mon_ERA5_1x1_195001-197812.nc'
+	era_var, era_lats, era_lons, era_levs, era_times, era_calendar, era_t_units = reading_in_data_functions.read_in_variable(era_file, 'tos')
+	print(np.shape(era_var))
+	era_file2 = '/network/group/aopp/met_data/MET001_ERA5/data/tos/mon/tos_mon_ERA5_1x1_197901-202012.nc'
+	era_var2,_,_,_,era_times2,_,_= reading_in_data_functions.read_in_variable(era_file2, 'tos')
+	era_var = np.append(era_var, era_var2,axis=0)
+	era_times = np.append(era_times,era_times2)
+	print(np.shape(era_var))
 	
 	start_year, end_year = 1958, 2009 #choose the period over which to calculate regression pattern
 	year_mask_ds = (ds_times >= start_year)&(ds_times <= end_year)
 	ds_am = ds_var[year_mask_ds,:,:]
 	year_mask_era = (era_times >= start_year)&(era_times <= end_year)
 	era_am = era_var[year_mask_era,:,:]
+	print('year masked' + str(np.shape(era_am)))
 	
-	#need to make annual mean arrays instead of ensemble arrays
+	#takes ensemble mean of CSF SST at each grid point
+	ens_mean_ds = []
+	for ds_yr in ds_am:
+		start_dim = np.shape(ds_yr)
+		flattened = ds_yr.flatten()
+		temp_array = [np.array(x) for x in flattened] #creates arrays of same gridpoint from all ensembles
+		mean_array = [np.mean(k) for k in zip(*temp_array)] #averages same gridpoint in all ensembles
+		ens_mean_ds.append(np.reshape(mean_array, start_dim)) #stores result in new array able to be analysed
+		print('one year' + str(np.shape(mean_array)))
+	ens_mean_ds = np.array(ens_mean_ds)
+	print(np.shape(ens_mean_ds))
 	
-	corrs_map, pvals_map = cal_grid_point_correlations(ds_am, era_am, return_pvals=True)
+	corrs_map, pvals_map = cal_grid_point_correlations(ens_mean_ds, era_am, return_pvals=True)
 	
 	#make plots
 	plt.figure(figsize=(15,15))
@@ -75,7 +94,7 @@ def make_corr_map(dataset_file, era_file):
 		plotting_functions.add_significance(pvals_map, ds_lons, ds_lats, clevs=np.array([0,0.05])) #plot hatching to show where p values are less than 0.05, ie statistically significant
 		ax.text(-0.05,1, subplot_labels[i], transform = ax.transAxes, fontsize=25, va='top', ha='right')
 		if i == 0:
-			title_str = 'SST correlation between CSF-20C and ASF-20C during DJF'
+			title_str = 'SST correlation between ' + dataset + ' and ERA5 during ' + season
 			plt.title(title_str, fontsize=30)
 			plotting_functions.add_latlon_labels(ax,xticks=np.arange(-180,181,60),yticks=np.arange(-80,81,20)) #add latitude longitude labels
 		ax.set_extent([-180,179,-90,20],crs=ccrs.PlateCarree())
@@ -93,7 +112,6 @@ def make_corr_map(dataset_file, era_file):
 	
 	plt.show()
 
+dataset = 'CSF-20C'
 season = 'DJF'
-csf_file = Data_dir + 'CSF-20C_' + season + '_sst_data.nc'
-asf_file = Data_dir + 'ASF-20C_' + season + '_sst_data.nc'
-make_corr_map(csf_file, asf_file)
+make_corr_map(dataset, season)
