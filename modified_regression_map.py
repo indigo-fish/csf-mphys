@@ -9,8 +9,8 @@ import numpy as np
 import cartopy.crs as ccrs
 import os, sys
 
-Code_dir = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
-Figure_dir = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' # directory to save figures to 
+Code_dir = '/home/w/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
+Figure_dir = Code_dir + 'Figures/' # directory to save figures to
 start_year,end_year = 1982,2009 # choose the period over which to calculate regression pattern
 
 sys.path.append(Code_dir)
@@ -27,7 +27,7 @@ def runregression(variable, season, level_to_choose=None, dataset=None):
     
     # Read in monthly geopotential height data on the 500hPa level
     # this is split across two files so need to read in both and combine them
-    file_str_ERA5 = '/network/group/aopp/met_data/MET001_ERA5/data/' + variable + '/mon/' + variable + '_mon_ERA5_2.5x2.5_195001-197812.nc' 
+    file_str_ERA5 = '/network/group/aopp/met_data/MET001_ERA5/data/' + variable + '/mon/' + variable + '_mon_ERA5_2.5x2.5_195001-197812.nc'
     if variable == 'zg':
         var,lats,lons,levs,times,calendar,t_units = reading_in_data_functions.read_in_variable(file_str_ERA5,'geopotential_height',chosen_level=level_to_choose)
     else:

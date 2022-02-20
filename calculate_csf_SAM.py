@@ -14,10 +14,10 @@ from scipy.ndimage import uniform_filter1d
 import matplotlib.pyplot as plt
 
 
-Code_dir = 'home/wadh5699/Example_Scripts/Amelia_example_scripts/'
+Code_dir = '/home/w/wadh5699/Example_Scripts/Amelia_example_scripts/'
 sys.path.append(Code_dir)
 #sets directories for accessing netcdf files and figures
-Code_dir = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
+Code_dir = '/home/w/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
 Figure_dir = Code_dir + 'Figures/'
 Data_dir = Code_dir + 'Data/'
 
@@ -262,7 +262,7 @@ def get_seas5_SAM_indices(season='DJF'):
 	seas_SAM_indices -= seas_mean_norm
 	seas_SAM_indices /= seas_std_norm
 	
-	return seas_SAM_indices, seas_years
+	return seas_SAM_indices, seas_times
 
 
 def graph_SAM_indices(dataset='CSF-20C', season='DJF'):

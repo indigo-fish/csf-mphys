@@ -9,7 +9,7 @@ Created on Tue Dec 14 2021
 import os, sys
 import numpy as np
 
-Code_dir = 'home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
+Code_dir = '/home/w/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
 
 sys.path.append(Code_dir)
 import read_in_grib_files as rgrb

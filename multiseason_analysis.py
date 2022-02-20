@@ -14,7 +14,7 @@ from scipy.ndimage import uniform_filter1d
 import matplotlib.pyplot as plt
 
 
-Code_dir = 'home/wadh5699/Example_Scripts/Amelia_example_scripts/'
+Code_dir = '/home/w/wadh5699/Example_Scripts/Amelia_example_scripts/'
 sys.path.append(Code_dir)
 
 import reading_in_data_functions as rd_data
@@ -48,7 +48,7 @@ def graph_all_SAM_indices(dataset='CSF-20C'):
 	plt.xlabel('Year')
 	plt.ylabel('Normalized SAM Index')
 	plt.legend()
-	figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_All_Seasons_Normalized_SAM.png'
+	figure_name = '/home/w/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_All_Seasons_Normalized_SAM.png'
 	plt.savefig(figure_name)
 	plt.show()
 
@@ -80,7 +80,7 @@ def short_correlations(dataset='CSF-20C', season='DJF', timescale = 20):
 		plt.ylabel(pair[2] + ' SAM index')
 		plt.title('Correlation Between ' + season + ' ' + dataset + ' and ' + pair[2] + ' In Different ' + str(timescale) + '-year Periods')
 		plt.legend()
-		figure_name = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_' + season + '_' + pair[2] + '_'  + str(timescale) + 'Period_Correlations.png'
+		figure_name = '/home/w/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_' + season + '_' + pair[2] + '_'  + str(timescale) + 'Period_Correlations.png'
 		plt.savefig(figure_name)
 		plt.show()
 

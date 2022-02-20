@@ -9,7 +9,7 @@ import numpy as np
 import cartopy.crs as ccrs
 import os, sys
 
-Code_dir = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
+Code_dir = '/home/w/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
 start_year,end_year = 1958,2010 # choose the period over which to calculate regression pattern
 
 sys.path.append(Code_dir)
@@ -18,7 +18,6 @@ import reading_in_data_functions
 import analysis_functions
 import calculate_csf_SAM
 
-Code_dir = '/home/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
 Figure_dir = Code_dir + 'Figures/' # directory to save figures to 
 Data_dir = Code_dir + 'Data/' #directory to access data in
 
@@ -34,8 +33,7 @@ def sst_regression(season, dataset='CSF-20C'):
     file_str = Data_dir + dataset + '_' + season + '_sst_data.nc'
     var, lats, lons, levs, times, calendar, t_units = reading_in_data_functions.read_in_variable(file_str, 'sst')
     
-    # calculate the seasonal mean SST
-    # needed for ERA5 data, not for CSF/ASF data
+    # calculate the seasonal mean SST needed for ERA5 data, not for CSF/ASF data
     
     # restrict geopotential height and SAM index to chosen years
     year_mask_var = (times>=start_year)&(times<=end_year)
@@ -44,44 +42,40 @@ def sst_regression(season, dataset='CSF-20C'):
     Marshall_SAM_idx = Marshall_SAM_idx[year_mask_Marshall]
     my_year_mask = (my_times>=start_year)&(my_times<=end_year)
     ensemble_SAM_index = ensemble_SAM_index[my_year_mask]
-    mean_sst = []
-    mean_sam = []
-    for (sst_yr, sam_yr) in zip(var_am, ensemble_SAM_index):
-        mean_sst.append(np.mean(sst_yr))
-        mean_sam.append(np.mean(sam_yr))
     
-    plt.plot(mean_sst, mean_sam)
-    print(mean_sst)
-    print(mean_sam)
     
-    """
     #regression map is expecting 2 time series, so pretend ensembles are time series
+    
     unwrapped_sst = []
     unwrapped_sam = []
     for (sst_yr, sam_yr) in zip(var_am, ensemble_SAM_index):
         for (sst_ensemble, sam_ensemble) in zip(sst_yr, sam_yr):
             unwrapped_sst.append(sst_ensemble)
             unwrapped_sam.append(sam_ensemble)
+    
     """
-    """
+    #only does 0th ensemble member to make it easier
     unwrapped_sst = []
     unwrapped_sam = []
     for (sst_yr, sam_yr) in zip(var_am, ensemble_SAM_index):
         unwrapped_sst.append(sst_yr[0])
         unwrapped_sam.append(sam_yr[0])
+    """
+    
     unwrapped_sst = np.array(unwrapped_sst)
     unwrapped_sam = np.array(unwrapped_sam)
+    
     
     # calculate regression pattern
     #regress_coeff,corr,pvals = analysis_functions.regress_map(my_SAM_index,var_am)
     regress_coeff,corr,pvals = analysis_functions.regress_map(unwrapped_sam, unwrapped_sst)
-    print(corr)
+    
     
     # make some plots
     plt.figure(figsize=(15,15))
     gs = gridspec.GridSpec(3,1,height_ratios=[5,10,0.5])
     
-    clevs = np.linspace(np.min(regress_coeff), np.max(regress_coeff), 10)
+    clevs = np.linspace(np.nanmin(regress_coeff), np.nanmax(regress_coeff), 10)
     #clevs = np.append(-a[::-1],a) # contour level
     subplot_labels = ['a)','b)']
     
@@ -107,11 +101,11 @@ def sst_regression(season, dataset='CSF-20C'):
     figure_name = Figure_dir + 'SAM_pattern_' + dataset + '_' + season + '_' + variable + str(start_year)+'-'+str(end_year)+'.png'
     print('saving to %s' % (figure_name))
     plt.savefig(figure_name,bbox_inches='tight')
-    """
+    
     plt.show()
 
 
-seasons = ['DJF']
+seasons = ['DJF', 'MAM', 'JJA', 'SON']
 for season in seasons:
     sst_regression(season=season)
 

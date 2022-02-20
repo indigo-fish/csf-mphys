@@ -14,7 +14,7 @@ from scipy.ndimage import uniform_filter1d
 import matplotlib.pyplot as plt
 
 
-Code_dir = 'home/wadh5699/Example_Scripts/Amelia_example_scripts/'
+Code_dir = '/home/w/wadh5699/Example_Scripts/Amelia_example_scripts/'
 sys.path.append(Code_dir)
 
 import reading_in_data_functions as rd_data
