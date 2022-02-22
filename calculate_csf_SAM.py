@@ -150,6 +150,7 @@ def read_SAM_indices(dataset='CSF-20C', season='DJF'):
 	
 	return mean_data, times, calendar, units
 
+
 def read_SAM_ensemble(dataset='CSF-20C', season='DJF'):
     ensemble_source = Data_dir + dataset + '_' + season + '_sam_ensemble_data.nc'
     ensemble_read = Dataset(ensemble_source)
@@ -231,11 +232,11 @@ def get_era_SAM_indices(season='DJF'):
 
 def get_seas5_SAM_indices(season='DJF'):
 	
-	#reads in ERA5 sea level pressure data and uses it to produce same type of SAM index
+	#reads in SEAS5 sea level pressure data and uses it to produce same type of SAM index
 	seas5_file = '/network/aopp/hera/mad/patterson/MPhys/SEAS5_ensemble_means/SEAS5_msl_ensemble_mean_25members_DJF_init_November_1982_2017.nc'
-	seas_slp, seas_lats, seas_lons, seas_levs, seas_times, seas_calendar, seas_t_units = rd_data.read_in_variable(seas5_file, 'psl')
+	seas_slp, seas_lats, seas_lons, seas_levs, seas_times, seas_calendar, seas_t_units = rd_data.read_in_variable(seas5_file, 'msl', time_name='years')
 	
-	#stores arrays of zonal mean slp from ERA5 at both latitudes
+	#stores arrays of zonal mean slp from SEAS5 at both latitudes
 	mean_pressures_40S = np.array([])
 	mean_pressures_65S = np.array([])
 	for seas_year_slp in seas_slp:
@@ -255,20 +256,36 @@ def get_seas5_SAM_indices(season='DJF'):
 		seas_SAM_index = pressure_40S / norm_40S - pressure_65S / norm_65S #subtracts normalized surface pressures to find unnormalized SAM index
 		seas_SAM_indices = np.append(seas_SAM_indices, seas_SAM_index)
 	
-	#normalizes ERA SAM indices
+	#normalizes SEAS5 SAM indices
 	seas_mean_norm = np.mean(seas_SAM_indices)
 	seas_std_norm = np.std(seas_SAM_indices)
 	
 	seas_SAM_indices -= seas_mean_norm
 	seas_SAM_indices /= seas_std_norm
 	
-	return seas_SAM_indices, seas_times
+	return seas_SAM_indices, seas_times, 'standard', 'Gregorian_year'
 
 
-def graph_SAM_indices(dataset='CSF-20C', season='DJF'):
+def save_seas5_SAM_indices(season='DJF'):
+	#reads in arrays of SAM indices and stores as netcdf
+	mean_SAM_indices, times, calendar, t_units = get_seas5_SAM_indices(season)
+	
+	#saves normalized SAM indices as netcdf files
+	mean_destination = Data_dir + 'SEAS5_' + season + '_sam_mean_data.nc'
+	mean_description = 'mean Marshall SAM index from SEAS5 during ' + season
+	save = sf.save_file(mean_destination, mean_description)
+	save.add_times(times, calendar, t_units, time_name='time')
+	save.add_variable(np.array(mean_SAM_indices), 'SAM index', ('time'))
+	save.close_file()
+
+
+def graph_SAM_indices(dataset='CSF-20C', season='DJF', variance=True):
 	#plots CSF SAM index, Marshall SAM index, and ERA SAM index on same graph
 	#should be adjusted for optional trendline
-	yearly_SAM_indices, mean_SAM_indices, SAM_stdevs, times, calendar, t_units = get_SAM_indices(dataset, season)
+	if variance:
+		yearly_SAM_indices, mean_SAM_indices, SAM_stdevs, times, calendar, t_units = get_SAM_indices(dataset, season)
+	else:
+		mean_SAM_indices, times, calendar, t_units = read_SAM_indices(dataset, season)
 	
 	#reads in offical Marshall SAM index data from text file
 	Marshall_SAM_index, years_SAM = rd_data.read_Marshall_SAM_idx(season)
@@ -278,7 +295,8 @@ def graph_SAM_indices(dataset='CSF-20C', season='DJF'):
 	
 	#displays plots of ensemble and mean SAM indices
 	plt.clf()
-	plt.plot(times, yearly_SAM_indices, color='gray')
+	if variance:
+		plt.plot(times, yearly_SAM_indices, color='gray')
 	plt.plot(times, mean_SAM_indices, linewidth = 2, color = 'black', label = 'mean')
 	plt.plot(years_SAM, Marshall_SAM_index, linewidth = 2, color = 'red', label = 'Marshall data')
 	plt.plot(era_years, era_SAM_indices, linewidth = 2, color= 'blue', label = 'ERA5 data')

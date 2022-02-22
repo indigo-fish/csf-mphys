@@ -9,45 +9,14 @@ Code_dir = '/home/w/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
 sys.path.append(Code_dir)
 import plotting_functions
 import reading_in_data_functions
+from interpolate_grid2 import interpolate_grid
+from cal_grid_point_correlations import cal_grid_point_correlations
 
 Data_dir = Code_dir + 'Data/'
 Figure_dir = Code_dir + 'Figures/'
 
-def cal_grid_point_correlations(X,Y,return_pvals=False):
-	""" Calculate correlations between two fields at each grid-point. Assumes
-	fields have time as first dimension then two spatial dimensions."""
-	
-	# check that time series and field have the same time dimension
-	for i in np.arange(X.ndim):
-		if X.shape[i] != Y.shape[i]:
-			print("Fields 1 and 2 do not have the same dimensions")
-			print("Field 1 size:", X.shape, "Field 2 size:", Y.shape)
-			raise ValueError
-	
-	corrs_map = np.zeros_like(X[0,:,:])
-	pvals_map = np.zeros_like(X[0,:,:])
-	
-	# calculate anomalies
-	X_anom = X - np.mean(X, axis=0)
-	Y_anom = Y - np.mean(Y, axis=0)
-	
-	print("Calculating grid-point correlations...")
-	milestone = 20
-	for i in np.arange(X.shape[1]):
-		if 100*float(i+1)/float(X.shape[1]) >= milestone:
-			print("%d %% complete" % (milestone))
-			milestone = milestone + 20
-		
-		for j in np.arange(X.shape[2]):
-			slope, intercept, r_value, p_value, std_err = linregress(X_anom[:,i,j], Y_anom[:,i,j])
-			corrs_map[i,j] = r_value
-			pvals_map[i,j] = p_value
-	
-	if return_pvals == True: return corrs_map, pvals_map
-	else: return corrs_map
-
 def make_corr_map(dataset, season):
-	dataset_file = Data_dir + 'CSF-20C_' + season + '_sst_data.nc'
+	dataset_file = '/home/p/pattersonm/sst_ecmf-guh4_1101_fcmean_sfc_1901_2010_DJF.nc'
 	#read in both sst maps
 	ds_var, ds_lats, ds_lons, ds_levs, ds_times, ds_calendar, ds_t_units = reading_in_data_functions.read_in_variable(dataset_file, 'sst')
 	era_file = '/network/group/aopp/met_data/MET001_ERA5/data/tos/mon/tos_mon_ERA5_1x1_195001-197812.nc'
@@ -57,28 +26,17 @@ def make_corr_map(dataset, season):
 	era_var2,_,_,_,era_times2,_,_= reading_in_data_functions.read_in_variable(era_file2, 'tos')
 	era_var = np.append(era_var, era_var2,axis=0)
 	era_times = np.append(era_times,era_times2)
-	print(np.shape(era_var))
 	
-	start_year, end_year = 1958, 2009 #choose the period over which to calculate regression pattern
+	
+	start_year, end_year = 1958, 2010 #choose the period over which to calculate regression pattern
 	year_mask_ds = (ds_times >= start_year)&(ds_times <= end_year)
 	ds_am = ds_var[year_mask_ds,:,:]
 	year_mask_era = (era_times >= start_year)&(era_times <= end_year)
 	era_am = era_var[year_mask_era,:,:]
-	print('year masked' + str(np.shape(era_am)))
 	
-	#takes ensemble mean of CSF SST at each grid point
-	ens_mean_ds = []
-	for ds_yr in ds_am:
-		start_dim = np.shape(ds_yr)
-		flattened = ds_yr.flatten()
-		temp_array = [np.array(x) for x in flattened] #creates arrays of same gridpoint from all ensembles
-		mean_array = [np.mean(k) for k in zip(*temp_array)] #averages same gridpoint in all ensembles
-		ens_mean_ds.append(np.reshape(mean_array, start_dim)) #stores result in new array able to be analysed
-		print('one year' + str(np.shape(mean_array)))
-	ens_mean_ds = np.array(ens_mean_ds)
-	print(np.shape(ens_mean_ds))
+	interpolated_ds = interpolate_grid(ds_am, ds_lons, ds_lats, era_lons, era_lats)
 	
-	corrs_map, pvals_map = cal_grid_point_correlations(ens_mean_ds, era_am, return_pvals=True)
+	corrs_map, pvals_map = cal_grid_point_correlations(interpolated_ds, era_am, return_pvals=True)
 	
 	#make plots
 	plt.figure(figsize=(15,15))
@@ -106,7 +64,7 @@ def make_corr_map(dataset, season):
 	plt.subplots_adjust(hspace=0.1, wspace=0.1) #force subplots to be close together
 	
 	#save figure
-	figure_name = Figure_dir + 'SST_pattern_CSF-20C_ASF-20C_DJF' + str(start_year) + '-' + str(end_year) + '.png'
+	figure_name = Figure_dir + 'SST_correlations_CSF-20C_ERA_DJF' + str(start_year) + '-' + str(end_year) + '.png'
 	print('saving to %s' % (figure_name))
 	plt.savefig(figure_name, bbox_inches='tight')
 	
