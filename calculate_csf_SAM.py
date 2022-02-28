@@ -370,6 +370,7 @@ def truncate_to_pairs(times1, data1, times2, data2):
 
 def correlate_pairs(data1, data2, label1, label2, season='DJF', smoothing=None):
 	#produces scatter plots of SAM indices in the same years in two different datasets
+	plt.clf()
 	plt.plot(data1, data2, 'o', label='original data')
 	res = linregress(data1, data2)
 	
@@ -378,7 +379,6 @@ def correlate_pairs(data1, data2, label1, label2, season='DJF', smoothing=None):
 	for point in data1:
 		lineplot.append(point * res.slope + res.intercept)
 	
-	plt.clf()
 	plt.plot(data1, lineplot, 'r', label='fitted line')
 	titlestr = 'Relationship between ' + label1 + ' and ' + label2 + ' SAM index during ' + season
 	if not smoothing==None: titlestr += ' with ' + str(smoothing) + '-year average'
