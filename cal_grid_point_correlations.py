@@ -16,8 +16,8 @@ def cal_grid_point_correlations(X,Y,return_pvals=False):
     pvals_map = np.zeros_like(X[0,:,:])
 
     # calculate anomalies
-    X_anom = X - np.mean(X,axis=0)
-    Y_anom = Y - np.mean(Y,axis=0)
+    X_anom = X - np.nanmean(X,axis=0)
+    Y_anom = Y - np.nanmean(Y,axis=0)
 
     print("Calculating grid-point correlations...")
     milestone = 20
@@ -30,7 +30,6 @@ def cal_grid_point_correlations(X,Y,return_pvals=False):
             try:
                 slope, intercept, r_value, p_value, std_err = linregress(X_anom[:,i,j],Y_anom[:,i,j])
             except ValueError:
-                #print(X_anom[:,i,j])
                 slope, intercept, r_value, p_value, std_err = 0, 0, 0, 0, 0
             corrs_map[i,j] = r_value
             pvals_map[i,j] = p_value
