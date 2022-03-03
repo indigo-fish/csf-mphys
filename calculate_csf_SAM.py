@@ -368,7 +368,7 @@ def truncate_to_pairs(times1, data1, times2, data2):
 	return paired1, paired2, paired_times
 
 
-def correlate_pairs(data1, data2, label1, label2, season='DJF', smoothing=None):
+def correlate_pairs(data1, data2, label1, label2, season='DJF', smoothing=None, shift_years=False):
 	#produces scatter plots of SAM indices in the same years in two different datasets
 	plt.clf()
 	plt.plot(data1, data2, 'o', label='original data')
@@ -388,8 +388,10 @@ def correlate_pairs(data1, data2, label1, label2, season='DJF', smoothing=None):
 	plt.legend()
 	plt.annotate(f"R squared: {res.rvalue**2:.6f}", (0.2, 0.2), xycoords='axes fraction')
 	figure_name = Figure_dir + label1 + '_' + label2 + '_' + season + '_SAM_correlation'
-	if smoothing==None: figure_name += '.png'
-	else: figure_name += '_' + str(smoothing) + '_average.png'
+	if smoothing!=None: figure_name += '_' + str(smoothing) + '_average'
+	if shift_years: figure_name += '_offset1'
+	figure_name += '.png'
+	print('saving figure to ' + figure_name)
 	plt.savefig(figure_name)
 	#plt.show()
 
@@ -400,11 +402,11 @@ def running_mean(data, years, timescale):
 	return averaged_data[int(timescale/2):len(averaged_data) - int(timescale/2)], years[int(timescale/2):len(averaged_data) - int(timescale/2)]
 
 
-def smooth_and_plot(data1, data2, label1, label2, times, timescale, season):
+def smooth_and_plot(data1, data2, label1, label2, times, timescale, season, shift_years = False):
 	#takes running mean of a pair of datasets and plots the comparison between them
 	smoothed_data1, _ = running_mean(data1, times, timescale)
 	smoothed_data2, _ = running_mean(data2, times, timescale)
-	correlate_pairs(smoothed_data1, smoothed_data2, label1, label2, season=season, smoothing=timescale)
+	correlate_pairs(smoothed_data1, smoothed_data2, label1, label2, season=season, smoothing=timescale, shift_years = shift_years)
 
 
 def compare_smoothings(dataset='CSF-20C', season='DJF'):
@@ -489,10 +491,13 @@ def separate_pressures(dataset='CSF-20C', season='DJF'):
 	#plt.show()
 
 
-def stat_analysis(dataset='CSF-20C', season='DJF'):
+def stat_analysis(dataset='CSF-20C', season='DJF', shift_years = False):
 	#runs many of the above plotting functions one after the other
 	#reads in seasonal forecast SAM indices
 	mean_SAM_indices, times, calendar, t_units = read_SAM_indices(dataset, season)
+	if shift_years:
+		mean_SAM_indices = mean_SAM_indices[:len(mean_SAM_indices) - 1]
+		times = times[1:]
 	
 	#reads in offical Marshall SAM index data from text file
 	Marshall_SAM_index, Marshall_years = rd_data.read_Marshall_SAM_idx(season)
@@ -507,16 +512,16 @@ def stat_analysis(dataset='CSF-20C', season='DJF'):
 		#creates arrays containing only SAM indices for years in both forecast dataset and Marshall data
 		paired_my_index, paired_other_index, paired_times = truncate_to_pairs(times, mean_SAM_indices, pair[1], pair[0])
 		#plots linear regression comparing forecast to other SAM indices
-		correlate_pairs(paired_my_index, paired_other_index, dataset, pair[2], season=season)
+		correlate_pairs(paired_my_index, paired_other_index, dataset, pair[2], season=season, shift_years = shift_years)
 		
 		#repeats same process for different lengths of running means
 		timescales = [2, 3, 5, 10, 15, 20, 30]
 		for timescale in timescales:
-			smooth_and_plot(paired_my_index, paired_other_index, dataset, pair[2], paired_times, timescale, season)
+			smooth_and_plot(paired_my_index, paired_other_index, dataset, pair[2], paired_times, timescale, season, shift_years = shift_years)
 	
 	#compares ERA5 data and Marshall data
 	paired_era_index2, paired_Marshall_index2, Marshall_and_era_times = truncate_to_pairs(era_years, era_SAM_indices, Marshall_years, Marshall_SAM_index)
-	correlate_pairs(paired_era_index2, paired_Marshall_index2, 'ERA5', 'Marshall', season=season)
+	correlate_pairs(paired_era_index2, paired_Marshall_index2, 'ERA5', 'Marshall', season=season, shift_years = shift_years)
 
 
 def full_analysis(dataset='CSF-20C', season='DJF'):

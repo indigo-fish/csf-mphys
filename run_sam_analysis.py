@@ -21,15 +21,21 @@ import save_file as sf
 import calculate_csf_SAM as calc1
 import multiseason_analysis as mult
 
+calc1.stat_analysis(dataset='SEAS5', season='DJF', shift_years = False)
+calc1.stat_analysis(dataset='SEAS5', season='DJF', shift_years = True)
+
 """
 datasets = ['CSF-20C', 'ASF-20C']
 seasons = ['DJF', 'MAM', 'JJA', 'SON']
 for dataset in datasets:
 	for season in seasons:
-		mult.short_correlations(dataset=dataset, season=season)
+		calc1.stat_analysis(dataset=dataset, season=season, shift_years = False)
+		calc1.stat_analysis(dataset=dataset, season=season, shift_years = True)
+"""
 """
 file_name = 'Data/CSF-20C_DJF_msl_data.nc'
 data, lats, lons, levs, times, calendar, t_units = rd_data.read_in_variable(file_name, 'mslp for SAM', lat_name='latitude', lon_name='longitude', time_name='time')
 #calc1.save_seas5_SAM_indices('DJF')
 #calc1.graph_SAM_indices('SEAS5', 'DJF', variance=False)
 calc1.stat_analysis('SEAS5', 'DJF')
+"""

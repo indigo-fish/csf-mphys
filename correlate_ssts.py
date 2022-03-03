@@ -15,8 +15,7 @@ from cal_grid_point_correlations import cal_grid_point_correlations
 Data_dir = Code_dir + 'Data/'
 Figure_dir = Code_dir + 'Figures/'
 
-def make_corr_map(dataset, season, variable='sst'):
-	print(dataset)
+def make_corr_map(dataset, season, variable='sst', shift_years = False):
 	#read in both maps
 	if variable=='sst' or variable=='tos':
 		if dataset=='CSF-20C':
@@ -31,20 +30,9 @@ def make_corr_map(dataset, season, variable='sst'):
 		era_file2 = '/network/group/aopp/met_data/MET001_ERA5/data/tos/mon/tos_mon_ERA5_1x1_197901-202012.nc'
 		era_var2, era_lats2, era_lons2, era_levs2, era_times2,_,_= reading_in_data_functions.read_in_variable(era_file2, 'tos')
 		#era_var, era_lats, era_lons, era_levs, era_times, era_calendar, era_t_units = reading_in_data_functions.read_in_variable(era_file2, 'tos')
-		"""
-		#because ERA files are different dimensions, interpolate them before combining two datasets
-		interpolated_era = []
-		for grid in era_var:
-			new_grid = interpolate_grid(grid, era_lons, era_lats, ds_lons, ds_lats)
-			interpolated_era.append(new_grid)
-		for grid in era_var2:
-			new_grid = interpolate_grid(grid, era_lons2, era_lats2, ds_lons, ds_lats)
-			interpolated_era.append(new_grid)
-
-		era_var = np.array(interpolated_era)
-		"""
 		ds_var[np.abs(ds_var)>1e3] = np.nan
 		era_var[np.abs(era_var)>1e3] = np.nan
+		era_var2[np.abs(era_var2)>1e3] = np.nan
 	
 	elif variable=='slp' or variable=='mslp' or variable=='psl':
 		if dataset=='CSF-20C':
@@ -73,6 +61,9 @@ def make_corr_map(dataset, season, variable='sst'):
 	
 	era_var = np.append(era_var, era_var2,axis=0) #2 separate ERA files are concatenated
 	era_times = np.append(era_times,era_times2)
+	print(dataset + ' ' + variable)
+	print(np.shape(ds_var))
+	print(np.shape(era_var))
 	
 	#converts monthly ERA data to seasonal, and numerical times to years in both datasets
 	#if variable=='sst' or variable=='tos' or variable=='slp' or variable=='mslp' or variable=='psl':
@@ -81,18 +72,16 @@ def make_corr_map(dataset, season, variable='sst'):
 	#	ds_years = np.arange(1901,2010+1)
 	if dataset=='CSF-20C' or dataset=='ASF-20C':
 		ds_years = np.arange(1901, 2010+1)
-		ds_years += 1
 	elif dataset=='SEAS5':
 		ds_years = np.arange(1982, 2017+1)
 	elif dataset=='CERA-20C':
 		ds_var, ds_years = reading_in_data_functions.calculate_annual_mean(ds_var, ds_times, ds_calendar, ds_t_units, season=season)
+	if shift_years:
+		ds_years += 1
 	era_var, era_years = reading_in_data_functions.calculate_annual_mean(era_var, era_times, era_calendar, era_t_units, season=season)
 	
 	#truncates both datasets to desired years
-	if dataset=='CSF-20C' or dataset=='ASF-20C' or dataset=='CERA-20C':
-		start_year, end_year = 1958, 2010
-	elif dataset=='SEAS5':
-		start_year, end_year = 1982, 2017
+	start_year, end_year = np.maximum(ds_years[0], era_years[0]), np.minimum(ds_years[len(ds_years) - 1], era_years[len(era_years) - 1])
 	year_mask_ds = (ds_years >= start_year)&(ds_years <= end_year)
 	ds_am = ds_var[year_mask_ds,:,:]
 	year_mask_era = (era_years >= start_year)&(era_years <= end_year)
@@ -101,11 +90,14 @@ def make_corr_map(dataset, season, variable='sst'):
 	#grid size of ERA and CSF is different so need to interpolate
 	#something is going wrong with the 3D interpolation so separately interpolating each 2D grid instead
 	
-	interpolated_era = []
-	for grid in era_am:
-		new_grid = interpolate_grid(grid, era_lons, era_lats, ds_lons, ds_lats)
-		interpolated_era.append(new_grid)
-	interpolated_era = np.array(interpolated_era)
+	if dataset != 'CSF-20C' or variable != 'sst':
+		interpolated_era = []
+		for grid in era_am:
+			new_grid = interpolate_grid(grid, era_lons, era_lats, ds_lons, ds_lats)
+			interpolated_era.append(new_grid)
+		interpolated_era = np.array(interpolated_era)
+	else:
+		interpolated_era = era_am
 	
 	corrs_map, pvals_map = cal_grid_point_correlations(ds_am, interpolated_era, return_pvals=True)
 	
@@ -140,27 +132,35 @@ def make_corr_map(dataset, season, variable='sst'):
 	plt.subplots_adjust(hspace=0.1, wspace=0.1) #force subplots to be close together
 	
 	#save figure
-	figure_name = Figure_dir + variable + '_correlations_' + dataset + '_ERA_' + season + '_' + str(start_year) + '-' + str(end_year) + '.png'
+	figure_name = Figure_dir + variable + '_correlations_' + dataset + '_ERA_' + season + '_' + str(start_year) + '-' + str(end_year)
+	if shift_years:
+		figure_name += '_offset1'
+	figure_name += '.png'
 	print('saving to %s' % (figure_name))
 	plt.savefig(figure_name, bbox_inches='tight')
 	
-	plt.show()
+	#plt.show()
 
 season = 'DJF'
-"""
 dataset = 'CERA-20C'
-make_corr_map(dataset, season, 'sst')
-make_corr_map(dataset, season, 'slp')
-"""
+#make_corr_map(dataset, season, variable='sst')
+make_corr_map(dataset, season, variable='slp')
+make_corr_map(dataset, season, variable='slp', shift_years = True)
 
 dataset = 'CSF-20C'
-#make_corr_map(dataset, season, 'sst')
-#make_corr_map(dataset, season, 'slp')
-make_corr_map(dataset, season, 'zg')
-#dataset = 'SEAS5'
-#make_corr_map(dataset, season, 'sst')
-#make_corr_map(dataset, season, 'slp')
+make_corr_map(dataset, season, variable='sst')
+make_corr_map(dataset, season, variable='sst', shift_years = True)
+make_corr_map(dataset, season, variable='slp')
+make_corr_map(dataset, season, variable='slp', shift_years = True)
+make_corr_map(dataset, season, variable='zg')
+make_corr_map(dataset, season, variable='zg', shift_years = True)
+
+dataset = 'SEAS5'
+make_corr_map(dataset, season, variable='sst')
+make_corr_map(dataset, season, variable='sst', shift_years = True)
+make_corr_map(dataset, season, variable='slp')
+make_corr_map(dataset, season, variable='slp', shift_years = True)
 
 dataset = 'ASF-20C'
-make_corr_map(dataset, season, 'zg')
-
+make_corr_map(dataset, season, variable='zg')
+make_corr_map(dataset, season, variable='zg', shift_years = True)
