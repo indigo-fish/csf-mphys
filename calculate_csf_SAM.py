@@ -23,6 +23,7 @@ Data_dir = Code_dir + 'Data/'
 
 import reading_in_data_functions as rd_data
 import save_file as sf
+import significance_testing as sig_test
 
 def get_zm_pressures(dataset='CSF-20C', season='DJF'):
 	#returns zonally averaged pressures at 40S and 65S from netcdf files, both ensemble mean and individual ensemble members
@@ -381,12 +382,14 @@ def correlate_pairs(data1, data2, label1, label2, season='DJF', smoothing=None, 
 	
 	plt.plot(data1, lineplot, 'r', label='fitted line')
 	titlestr = 'Relationship between ' + label1 + ' and ' + label2 + ' SAM index during ' + season
-	if not smoothing==None: titlestr += ' with ' + str(smoothing) + '-year average'
+	if smoothing != None: titlestr += ' with ' + str(smoothing) + '-year average'
 	plt.title(titlestr)
 	plt.xlabel(label1 + ' SAM')
 	plt.ylabel(label2 + ' SAM')
 	plt.legend()
-	plt.annotate(f"R squared: {res.rvalue**2:.6f}", (0.2, 0.2), xycoords='axes fraction')
+	if smoothing == None: significance = sig_test.significance(data1, data2, 1)
+	else: significance = sig_test.significance(data1, data2, smoothing)
+	plt.annotate(f"p-value: {significance:.6f}", (0.2, 0.2), xycoords='axes fraction')
 	figure_name = Figure_dir + label1 + '_' + label2 + '_' + season + '_SAM_correlation'
 	if smoothing!=None: figure_name += '_' + str(smoothing) + '_average'
 	if shift_years: figure_name += '_offset1'
@@ -496,8 +499,7 @@ def stat_analysis(dataset='CSF-20C', season='DJF', shift_years = False):
 	#reads in seasonal forecast SAM indices
 	mean_SAM_indices, times, calendar, t_units = read_SAM_indices(dataset, season)
 	if shift_years:
-		mean_SAM_indices = mean_SAM_indices[:len(mean_SAM_indices) - 1]
-		times = times[1:]
+		times += 1
 	
 	#reads in offical Marshall SAM index data from text file
 	Marshall_SAM_index, Marshall_years = rd_data.read_Marshall_SAM_idx(season)
