@@ -20,6 +20,11 @@ sys.path.append(Code_dir)
 import reading_in_data_functions as rd_data
 import save_file as sf
 import calculate_csf_SAM as calc1
+import significance_testing as sig_test
+
+Code_dir = 'home/w/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
+Data_dir = Code_dir + 'Data/'
+Figure_dir = Code_dir + 'Figures/'
 
 def graph_all_SAM_indices(dataset='CSF-20C'):
 	
@@ -48,7 +53,7 @@ def graph_all_SAM_indices(dataset='CSF-20C'):
 	plt.xlabel('Year')
 	plt.ylabel('Normalized SAM Index')
 	plt.legend()
-	figure_name = '/home/w/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_All_Seasons_Normalized_SAM.png'
+	figure_name = Figure_dir + dataset + '_All_Seasons_Normalized_SAM.png'
 	plt.savefig(figure_name)
 	plt.show()
 
@@ -80,16 +85,19 @@ def short_correlations(dataset='CSF-20C', season='DJF', timescale = 20):
 		plt.ylabel(pair[2] + ' SAM index')
 		plt.title('Correlation Between ' + season + ' ' + dataset + ' and ' + pair[2] + ' In Different ' + str(timescale) + '-year Periods')
 		plt.legend()
-		figure_name = '/home/w/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/Figures/' + dataset + '_' + season + '_' + pair[2] + '_'  + str(timescale) + 'Period_Correlations.png'
+		figure_name = Figure_dir + dataset + '_' + season + '_' + pair[2] + '_'  + str(timescale) + 'Period_Correlations.png'
 		plt.savefig(figure_name)
 		plt.show()
 
-def corr_without_trend(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
-	#plots interannual variability with SAM subtracted
+def detrend_data(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
+	#produces detrended datasets for use in various analyses
 	
 	#reads in SAM index data
-	mean_SAM_indices, times, calendar, t_units = calc1.read_SAM_indices(dataset, season)
-	Marshall_SAM_indices, Marshall_years = rd_data.read_Marshall_SAM_idx(season)
+	if dataset == 'Marshall':
+		mean_SAM_indices, times = rd_data.read_Marshall_SAM_idx(season)
+		_, _, calendar, t_units = calc1.read_SAM_indices('CSF-20C', season)
+	else:
+		mean_SAM_indices, times, calendar, t_units = calc1.read_SAM_indices(dataset, season)
 	if dataset == 'CSF-20C' or dataset == 'ASF-20C':
 		times += 1
 	
@@ -101,13 +109,9 @@ def corr_without_trend(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
 	year_mask = (times >= start_year) & (times <= end_year)
 	masked_SAM = mean_SAM_indices[year_mask]
 	masked_times = times[year_mask]
-	year_mask_Marshall = (Marshall_years >= start_year) & (Marshall_years <= end_year)
-	masked_Marshall = Marshall_SAM_indices[year_mask_Marshall]
-	masked_Marshall_times = Marshall_years[year_mask_Marshall]
 	
 	#calculates trend
 	csf_res = linregress(masked_times, masked_SAM)
-	Marshall_res = linregress(masked_Marshall_times, masked_Marshall)
 	
 	#constructs new datasets with trend subtracted
 	mid_year = (start_year + end_year) / 2
@@ -115,10 +119,21 @@ def corr_without_trend(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
 	for SAM, year in zip(masked_SAM, masked_times):
 		delta_year = year - mid_year
 		detrended_SAM.append(SAM - delta_year * csf_res.slope)
-	detrended_Marshall = []
-	for SAM, year in zip(masked_Marshall, masked_Marshall_times):
-		delta_year = year - mid_year
-		detrended_Marshall.append(SAM - delta_year * Marshall_res.slope)
+	
+	#saves netcdf files
+	dataset_destination = Data_dir + dataset + '_detrended_' + season + '_sam_mean_data.nc'
+	dataset_description = 'detrended Marshall SAM index from ' + dataset + 'during ' + season
+	save = sf.save_file(dataset_destination, dataset_description)
+	save.add_times(masked_times, calendar, t_units, time_name = 'time')
+	save.add_variable(np.array(detrended_SAM), 'SAM index', ('time'))
+	save.close_file()
+	
+
+
+def corr_without_trend(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
+	#produces plots of interannual variability with SAM subtracted
+	detrended_SAM, _, _, _ = calc1.read_SAM_indices(dataset + '_detrended', season)
+	detrended_Marshall, _, _, _ = calc1.read_SAM_indices('Marshall_detrended', season)
 	
 	#plots interannual variability
 	plt.clf()
@@ -135,6 +150,11 @@ def corr_without_trend(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
 	plt.xlabel(dataset + ' SAM')
 	plt.ylabel('Marshall SAM')
 	plt.legend()
+	significance = sig_test.significance(detrended_SAM, detrended_Marshall, 1)
+	plt.annotate(f"p-value: {significance:.6f}", (0.2, 0.8), xycoords='axes fraction')
+	figure_name = Figure_dir + dataset + '_Marshall_detrended_' + season + '_SAM_correlation.png'
+	print('saving figure to ' + figure_name)
+	plt.savefig(figure_name)
 	plt.show()
 
 #use run_sam_analysis to run code
