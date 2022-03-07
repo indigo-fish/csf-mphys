@@ -22,7 +22,7 @@ import save_file as sf
 import calculate_csf_SAM as calc1
 import significance_testing as sig_test
 
-Code_dir = 'home/w/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
+Code_dir = '/home/w/wadh5699/Desktop/Example_Scripts/Amelia_example_scripts/'
 Data_dir = Code_dir + 'Data/'
 Figure_dir = Code_dir + 'Figures/'
 
@@ -98,12 +98,14 @@ def detrend_data(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
 		_, _, calendar, t_units = calc1.read_SAM_indices('CSF-20C', season)
 	else:
 		mean_SAM_indices, times, calendar, t_units = calc1.read_SAM_indices(dataset, season)
-	if dataset == 'CSF-20C' or dataset == 'ASF-20C':
+	if (dataset == 'CSF-20C' or dataset == 'ASF-20C') and season=='DJF':
 		times += 1
 	
 	#truncates data series to desired common period
-	if compare_SEAS5:
-		start_year, end_year = 1982, 2010 #common period is 1982 to 2009
+	if compare_SEAS5 and season=='DJF':
+		start_year, end_year = 1982, 2010 #common period is 1982 (SEAS5) to December 2009 (ASF-20C)
+	elif compare_SEAS5:
+		start_year, end_year = 1982, 2009
 	else:
 		start_year, end_year = 1958, 2010
 	year_mask = (times >= start_year) & (times <= end_year)
@@ -122,12 +124,12 @@ def detrend_data(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
 	
 	#saves netcdf files
 	dataset_destination = Data_dir + dataset + '_detrended_' + season + '_sam_mean_data.nc'
-	dataset_description = 'detrended Marshall SAM index from ' + dataset + 'during ' + season
+	dataset_description = 'detrended Marshall SAM index from ' + dataset + ' during ' + season
 	save = sf.save_file(dataset_destination, dataset_description)
 	save.add_times(masked_times, calendar, t_units, time_name = 'time')
 	save.add_variable(np.array(detrended_SAM), 'SAM index', ('time'))
 	save.close_file()
-	
+
 
 
 def corr_without_trend(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
