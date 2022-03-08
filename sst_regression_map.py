@@ -72,14 +72,20 @@ def sst_regression(season, dataset='CSF-20C'):
     
     
     # make some plots
+    plt.clf()
     plt.figure(figsize=(15,15))
-    gs = gridspec.GridSpec(3,1,height_ratios=[5,10,0.5])
+    #gs = gridspec.GridSpec(3,1,height_ratios=[5,10,0.5])
+    gs = gridspec.GridSpec(2,1,height_ratios=[10,0.5])
     
-    clevs = np.linspace(np.nanmin(regress_coeff), np.nanmax(regress_coeff), 10)
+    print(variable)
+    print(corr)
+    if variable=='sst': clevs = np.arange(-.5, .6, .1)
+    else: clevs = np.linspace(min(corr), max(corr), 10)
     #clevs = np.append(-a[::-1],a) # contour level
     subplot_labels = ['a)','b)']
     
-    for i, projection in enumerate([ccrs.PlateCarree(central_longitude=0.),ccrs.Orthographic(central_longitude=0.0, central_latitude=-90.0) ]):
+    for i, projection in enumerate([ccrs.PlateCarree(central_longitude=0.) ]):
+    #for i, projection in enumerate([ccrs.PlateCarree(central_longitude=0.),ccrs.Orthographic(central_longitude=0.0, central_latitude=-90.0) ]):
     
         ax = plt.subplot(gs[i,0],projection=projection)
         cs = plotting_functions.plot_filled_contours(regress_coeff,lons,lats,clevs,ax,title='')
@@ -92,7 +98,8 @@ def sst_regression(season, dataset='CSF-20C'):
         ax.set_extent([-180,179,-90,20],crs=ccrs.PlateCarree())
     
     # colour bar
-    ax = plt.subplot(gs[2,:])
+    #ax = plt.subplot(gs[2,:])
+    ax = plt.subplot(gs[1,:])
     plotting_functions.colorbar(ax,cs)
     
     plt.subplots_adjust(hspace=0.1,wspace=0.1) # force subplots to be close together

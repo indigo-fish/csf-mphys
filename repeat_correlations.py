@@ -103,8 +103,10 @@ def make_corr_map(dataset, season, variable='sst', compare_SEAS5=True):
 	
 	corrs_map, pvals_map = cal_grid_point_correlations(ds_am, interpolated_era, return_pvals=True)
 	
+	return corrs_map, pvals_map, ds_lons, ds_lats
+	"""
 	#make plots
-	plt.figure(figsize=(15,10))
+	plt.figure(figsize=(15,15))
 	gs = gridspec.GridSpec(2,1,height_ratios=[10,0.5])
 	
 	clevs = np.arange(-1.05,1.1,0.1)
@@ -129,13 +131,54 @@ def make_corr_map(dataset, season, variable='sst', compare_SEAS5=True):
 	#plt.subplots_adjust(hspace=0.1, wspace=0.1) #force subplots to be close together
 	
 	#save figure
-	figure_name = Figure_dir + 'Another_' + variable + '_correlations_' + dataset + '_ERA_' + season + '_' + str(start_year) + '-' + str(end_year)
+	figure_name = Figure_dir + variable + '_correlations_' + dataset + '_ERA_' + season + '_' + str(start_year) + '-' + str(end_year)
 	figure_name += '.png'
 	print('saving to %s' % (figure_name))
 	plt.savefig(figure_name, bbox_inches='tight')
 	
 	#plt.show()
+	"""
 
+def plot_all(datasets, season, variable, compare_SEAS5):
+	plt.figure(figsize=(15,15))
+	height_ratios = []
+	for dataset in datasets:
+		height_ratios.append(10)
+	height_ratios.append(0.5)
+	gs = gridspec.GridSpec(len(datasets) + 1, 1, height_ratios=height_ratios)
+	
+	if compare_SEAS5: start_year, end_year = 1982, 2010
+	else: start_year, end_year = 1958, 1986
+	
+	clevs = np.arange(-1.05,1.1,0.1)
+	projection = ccrs.PlateCarree(central_longitude=0.)
+	for i, dataset in enumerate(datasets):
+		corrs_map, pvals_map, ds_lons, ds_lats = make_corr_map(dataset, season, variable=variable, compare_SEAS5=compare_SEAS5)
+		ax = plt.subplot(gs[i,0], projection=projection)
+		cs = plotting_functions.plot_filled_contours(corrs_map, ds_lons, ds_lats, clevs, ax, title='')
+		plotting_functions.add_significance(pvals_map, ds_lons, ds_lats, clevs=np.array([0,0.05])) #plot hatching to show where p values are less than 0.05, ie statistically significant
+		ax.text(-0.1,1, dataset, transform = ax.transAxes, fontsize=20, va='top', ha='right')
+		if i == 0:
+			if variable == 'zg': variable='z500'
+			title_str = variable + ' correlation between Datasets and ERA5 during ' + season + ': ' + str(start_year) + '-' + str(end_year)
+			if variable == 'z500': variable='zg'
+			plt.title(title_str, fontsize=30)
+		if i < len(datasets) - 1: plotting_functions.add_latlon_labels(ax,xticks=[],yticks=np.arange(-80,81,20), fontsize=15) #add latitude longitude labels
+		else: plotting_functions.add_latlon_labels(ax,xticks=np.arange(-180,181,60),yticks=np.arange(-80,81,20), fontsize=15)
+		ax.set_extent([-180,179,-90,20],crs=ccrs.PlateCarree())
+	
+	#colour bar
+	ax = plt.subplot(gs[len(datasets),:])
+	plotting_functions.colorbar(ax,cs)
+	
+	#plt.subplots_adjust(hspace=0.1, wspace=0.1) #force subplots to be close together
+	
+	#save figure
+	figure_name = Figure_dir + 'Repeat' + variable + '_correlations_ERA_' + season + '_' + str(start_year) + '-' + str(end_year) + '.png'
+	print('saving to %s' % (figure_name))
+	plt.savefig(figure_name, bbox_inches='tight')
+	
+"""
 array = [True, False]
 for arr in array:
 	season = 'DJF'
@@ -154,4 +197,12 @@ for arr in array:
 
 	dataset = 'ASF-20C'
 	make_corr_map(dataset, season, variable='zg', compare_SEAS5=arr)
+"""
 
+season='DJF'
+
+datasets = ['CSF-20C', 'ASF-20C']
+plot_all(datasets, season, 'zg', True)
+
+datasets = ['CSF-20C', 'SEAS5']
+plot_all(datasets, season, 'slp', True)

@@ -22,6 +22,7 @@ import calculate_csf_SAM as calc1
 import multiseason_analysis as mult
 import detrending as det
 
+"""
 datasets = ['CSF-20C', 'ASF-20C', 'Marshall']
 seasons = ['DJF', 'MAM', 'JJA', 'SON']
 for dataset in datasets:
@@ -30,17 +31,23 @@ for dataset in datasets:
 		det.detrend_data(dataset=dataset, season=season, compare_SEAS5 = False)
 
 det.detrend_data(dataset='SEAS5', season='DJF')
+"""
 
-datasets = ['CSF-20C', 'ASF-20C']
+datasets = ['CSF-20C', 'ASF-20C', 'SEAS5']
+seasons = ['DJF']
 for dataset in datasets:
 	for season in seasons:
+		"""
 		det.corr_without_trend(dataset=dataset, season=season)
 		det.corr_without_trend(dataset=dataset, season=season, compare_SEAS5 = False)
 		det.corr_with_trend(dataset=dataset, season=season)
 		det.corr_with_trend(dataset=dataset, season=season, compare_SEAS5 = False)
+		"""
+		calc1.graph_SAM_indices(dataset=dataset, season=season, cut_years=False, trend=False)
+		calc1.graph_SAM_indices(dataset=dataset, cut_years=True, trend=True)
 
-det.corr_without_trend(dataset='SEAS5', season='DJF')
-det.corr_with_trend(dataset='SEAS5', season='DJF')
+#det.corr_without_trend(dataset='SEAS5', season='DJF')
+#det.corr_with_trend(dataset='SEAS5', season='DJF')
 
 #calc1.stat_analysis(dataset='SEAS5', season='DJF', shift_years = False)
 #calc1.stat_analysis(dataset='SEAS5', season='DJF', shift_years = True)

@@ -85,7 +85,7 @@ def graph_one(axes, dataset='CSF-20C', season='DJF', variance=True, trend=True, 
 	
 	axes.set(xlabel='Year', ylabel='SAM')
 	axes.label_outer()
-	axes.legend()
+	axes.legend(loc='center left')
 	
 	figure_name = Figure_dir + 'Final_' + dataset + '_' + season
 	if trend: figure_name += '_trend'

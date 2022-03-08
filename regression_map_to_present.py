@@ -18,13 +18,20 @@ import reading_in_data_functions
 import analysis_functions
 import calculate_csf_SAM
 
-def get_corr(season, dataset='Marshall', compare_SEAS5=True):
+def get_corr(season, dataset='Marshall', compare_SEAS5=True, detrended=False):
     
     variable = 'tos'
     # read in the SAM index
-    if dataset == 'Marshall':
-        SAM_idx, years_SAM = reading_in_data_functions.read_Marshall_SAM_idx(season=season)
-    else: SAM_idx, years_SAM, calendar, units = calculate_csf_SAM.read_SAM_indices(dataset=dataset, season=season)
+    if detrended:
+        dataset_str = dataset + '_detrended_'
+        if compare_SEAS5: dataset_str += '1982-2010'
+        else: dataset_str += '1958-1986'
+        SAM_idx, years_SAM, calendar, units = calculate_csf_SAM.read_SAM_indices(dataset=dataset_str, season=season)
+        if (dataset=='CSF-20C' or dataset=='ASF-20C') and season=='DJF': years_SAM -= 1 #detrended netcdfs have year shift already applied, so undo it to be redone later
+    else:
+        if dataset == 'Marshall':
+            SAM_idx, years_SAM = reading_in_data_functions.read_Marshall_SAM_idx(season=season)
+        else: SAM_idx, years_SAM, calendar, units = calculate_csf_SAM.read_SAM_indices(dataset=dataset, season=season)
     
     # Read in SSTs
     if dataset=='Marshall' or dataset=='ASF-20C': #ASF-20C has imposed SSTs
@@ -66,7 +73,7 @@ def get_corr(season, dataset='Marshall', compare_SEAS5=True):
     
     return regress_coeff, corr, pvals, lons, lats
 
-def make_all_maps(season='DJF', compare_SEAS5=True):
+def make_all_maps(season='DJF', compare_SEAS5=True, detrended=False):
     variable = 'tos'
     #gets regression values for all relevant SAM/SSTs, and plots them on adjacent graphs
     if compare_SEAS5:
@@ -87,13 +94,14 @@ def make_all_maps(season='DJF', compare_SEAS5=True):
     clevs = np.arange(-.75, .8, .1)
     projection = ccrs.PlateCarree(central_longitude=0.)
     for i, dataset in enumerate(datasets):
-        regress_coeff, corr, pvals, lons, lats = get_corr(season, dataset=dataset, compare_SEAS5=compare_SEAS5)
+        regress_coeff, corr, pvals, lons, lats = get_corr(season, dataset=dataset, compare_SEAS5=compare_SEAS5, detrended=detrended)
         ax = plt.subplot(gs[i,0],projection=projection)
         cs = plotting_functions.plot_filled_contours(regress_coeff,lons,lats,clevs,ax,title='')
         plotting_functions.add_significance(pvals,lons,lats,clevs=np.array([0,0.05]))  # plot hatching to show where p values are less than 0.05, i.e. stat significant
         ax.text(-0.1,1, dataset, transform=ax.transAxes,fontsize=20, va='top', ha='right')
         if i == 0:
-            title_str = 'Regression of ' + season + ' SAM onto SSTS: ' + str(start_year) + '-' + str(end_year)
+            if detrended: title_str = 'Regression of ' + season + ' Detrended SAM onto SSTs: ' + str(start_year) + '-' + str(end_year)
+            else: title_str = 'Regression of ' + season + ' SAM onto SSTs: ' + str(start_year) + '-' + str(end_year)
             plt.title(title_str,fontsize=30)
         if i < len(datasets) - 1: plotting_functions.add_latlon_labels(ax,xticks=[],yticks=np.arange(-80,81,20),fontsize=15) # add latitude longitude labels
         else: plotting_functions.add_latlon_labels(ax,xticks=np.arange(-180,181,60),yticks=np.arange(-80,81,20),fontsize=15) # add latitude longitude labels
@@ -106,7 +114,8 @@ def make_all_maps(season='DJF', compare_SEAS5=True):
     #plt.subplots_adjust(hspace=0.1,wspace=0.1) # force subplots to be close together
     
     # save figure
-    figure_name = Figure_dir + 'Final_SAM_pattern_' + variable + '_' + str(start_year) + '-' + str(end_year) + '_' + season + '.png'
+    if detrended: figure_name = Figure_dir + 'Final_detrended_SAM_pattern_' + variable + '_' + str(start_year) + '-' + str(end_year) + '_' + season + '.png'
+    else: figure_name = Figure_dir + 'Final_SAM_pattern_' + variable + '_' + str(start_year) + '-' + str(end_year) + '_' + season + '.png'
     print('saving to %s' % (figure_name))
     plt.savefig(figure_name,bbox_inches='tight')
     plt.show()
@@ -203,3 +212,5 @@ for season in seasons:
 
 make_all_maps('DJF')
 make_all_maps('DJF', compare_SEAS5=False)
+make_all_maps('DJF', detrended=True)
+make_all_maps('DJF', compare_SEAS5=False, detrended=True)

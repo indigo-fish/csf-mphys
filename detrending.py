@@ -71,8 +71,7 @@ def detrend_data(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
 	save.close_file()
 
 
-
-def corr_without_trend(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
+def corr_without_trend(axes, dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
 	#produces plots of interannual variability with SAM subtracted
 	if compare_SEAS5:
 		years = '1982-2010'
@@ -82,29 +81,22 @@ def corr_without_trend(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
 	detrended_Marshall, _, _, _ = calc1.read_SAM_indices('Marshall' + '_detrended_' + years, season)
 	
 	#plots interannual variability
-	plt.clf()
-	plt.plot(detrended_SAM, detrended_Marshall, 'o', label='original data')
+	axes.plot(detrended_SAM, detrended_Marshall, 'o', label='original data')
 	
 	res = linregress(detrended_SAM, detrended_Marshall)
+	xpts = np.arange(-2.2, 2.2, 0.1)
 	lineplot = []
-	for point in detrended_SAM:
+	for point in xpts:
 		lineplot.append(point * res.slope + res.intercept)
 	
-	plt.plot(detrended_SAM, lineplot, 'r', label='fitted line')
-	titlestr = 'Detrended ' + season + ' ' + dataset + ' and Marshall SAM: ' + years
-	plt.title(titlestr)
-	plt.xlabel(dataset + ' SAM')
-	plt.ylabel('Marshall SAM')
-	plt.legend()
+	axes.plot(xpts, lineplot, 'r', label='fitted line')
+	axes.set(xlabel=dataset + ' SAM', ylabel='Marshall SAM')
 	significance = sig_test.significance(detrended_SAM, detrended_Marshall, 1)
-	plt.annotate(f"p-value: {significance:.6f}", (0.2, 0.8), xycoords='axes fraction')
-	figure_name = Figure_dir + dataset + '_Marshall_detrended_' + years + '_' + season + '_SAM_correlation.png'
-	print('saving figure to ' + figure_name)
-	plt.savefig(figure_name)
-	plt.show()
+	axes.annotate(f"p-value: {significance:.6f}", (0.1, 0.85), xycoords='axes fraction')
+	axes.annotate(f"r-value: {res.rvalue:.6f}", (0.1, 0.65), xycoords='axes fraction')
 
 
-def corr_with_trend(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
+def corr_with_trend(axes, dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
 	#produces plots of interannual variability with SAM subtracted
 	if compare_SEAS5:
 		years = '1982-2010'
@@ -129,26 +121,112 @@ def corr_with_trend(dataset='CSF-20C', season='DJF', compare_SEAS5 = True):
 	masked_Marshall_times = Marshall_years[year_mask_Marshall]
 	
 	#plots interannual variability
-	plt.clf()
-	plt.plot(masked_SAM, masked_Marshall, 'o', label='original data')
+	axes.plot(masked_SAM, masked_Marshall, 'o', label='original data')
 	
 	res = linregress(masked_SAM, masked_Marshall)
+	xpts = np.arange(-2.2, 2.2, 0.1)
 	lineplot = []
-	for point in masked_SAM:
+	for point in xpts:
 		lineplot.append(point * res.slope + res.intercept)
 	
-	plt.plot(masked_SAM, lineplot, 'r', label='fitted line')
-	titlestr = season + ' ' + dataset + ' and Marshall SAM: ' + years
-	plt.title(titlestr)
-	plt.xlabel(dataset + ' SAM')
-	plt.ylabel('Marshall SAM')
-	plt.legend()
+	axes.plot(xpts, lineplot, 'r', label='fitted line')
+	axes.set(xlabel=dataset + ' SAM', ylabel='Marshall SAM')
 	significance = sig_test.significance(masked_SAM, masked_Marshall, 1)
-	plt.annotate(f"p-value: {significance:.6f}", (0.2, 0.8), xycoords='axes fraction')
-	figure_name = Figure_dir + dataset + '_Marshall_' + years + '_' + season + '_SAM_correlation.png'
+	axes.annotate(f"p-value: {significance:.6f}", (0.1, 0.85), xycoords='axes fraction')
+	axes.annotate(f"r-value: {res.rvalue:.6f}", (0.1, 0.65), xycoords='axes fraction')
+
+
+def graph_all(season='DJF', compare_SEAS5=True, detrended=False):
+	if season=='DJF' and compare_SEAS5: datasets=['CSF-20C', 'ASF-20C', 'SEAS5']
+	else: datasets=['CSF-20C', 'ASF-20C']
+	
+	if compare_SEAS5: year_range = '1982-2010'
+	else: year_range = '1958-1986'
+	
+	fig, axes = plt.subplots(len(datasets), sharex=True, sharey=True)
+	for dataset, axis in zip (datasets, axes):
+		if detrended: corr_without_trend(axis, dataset=dataset, season=season, compare_SEAS5=compare_SEAS5)
+		else: corr_with_trend(axis, dataset=dataset, season=season, compare_SEAS5=compare_SEAS5)
+	if detrended: title = 'Detrended SAM Skill in ' + season + ': ' + year_range
+	else: title = 'SAM Skill in ' + season + ': ' + year_range
+	fig.suptitle(title)
+	
+	figure_name = Figure_dir + 'Final_multiplot_SAM_correlations_'
+	if detrended: figure_name += 'detrended_'
+	else: figure_name += 'with_trend_'
+	figure_name += season + '_' + year_range + '.png'
 	print('saving figure to ' + figure_name)
-	plt.savefig(figure_name)
-	plt.show()
+	fig.savefig(figure_name)
+
+def diff_period_correlations(axes, period, dataset='CSF-20C', season='DJF'):
+	#produces plots of interannual variability with SAM subtracted
+	if dataset=='SEAS5': start_years = np.arange(1982, 2017+1-period, 1)
+	elif dataset=='CSF-20C' and season=='DJF': start_years = np.arange(1958, 2011+1-period, 1)
+	else: start_years = np.arange(1958, 2010+1-period, 1)
+	
+	mean_SAM_indices, times, _, _ = calc1.read_SAM_indices(dataset, season)
+	if (dataset=='CSF-20C' or dataset == 'ASF-20C') and season=='DJF':
+		times += 1
+	Marshall_SAM_indices, Marshall_years = rd_data.read_Marshall_SAM_idx(season)
+	
+	r_values = []
+	#p_values = []
+	for start_year in start_years:
+		end_year = start_year + period
+		year_mask = (times >= start_year) & (times <= end_year)
+		masked_SAM = mean_SAM_indices[year_mask]
+		masked_times = times[year_mask]
+		year_mask_Marshall = (Marshall_years >= start_year) & (Marshall_years <= end_year)
+		masked_Marshall = Marshall_SAM_indices[year_mask_Marshall]
+		masked_Marshall_times = Marshall_years[year_mask_Marshall]
+		res = linregress(masked_SAM, masked_Marshall)
+		r_values.append(res.rvalue)
+		#p_values.append(sig_test.significance(masked_SAM, masked_Marshall, 1))
+	
+	axes.plot(start_years + int(period / 2), r_values, label=dataset)
+	#plt.plot(start_years, p_values)
+	#plt.show()
+	
+	"""
+	#plots interannual variability
+	axes.plot(masked_SAM, masked_Marshall, 'o', label='original data')
+	
+	res = linregress(masked_SAM, masked_Marshall)
+	xpts = np.arange(-2.2, 2.2, 0.1)
+	lineplot = []
+	for point in xpts:
+		lineplot.append(point * res.slope + res.intercept)
+	
+	axes.plot(xpts, lineplot, 'r', label='fitted line')
+	axes.set(xlabel=dataset + ' SAM', ylabel='Marshall SAM')
+	significance = sig_test.significance(masked_SAM, masked_Marshall, 1)
+	axes.annotate(f"p-value: {significance:.6f}", (0.1, 0.85), xycoords='axes fraction')
+	axes.annotate(f"r-value: {res.rvalue:.6f}", (0.1, 0.65), xycoords='axes fraction')
+	"""
+
+def run_multi_correlations(period, season='DJF'):
+	if season=='DJF': datasets=['CSF-20C', 'ASF-20C', 'SEAS5']
+	else: datasets=['CSF-20C', 'ASF-20C']
+	fig, axes = plt.subplots()
+	
+	for dataset in datasets:
+		diff_period_correlations(axes, period, dataset=dataset, season=season)
+	fig.suptitle('Correlation During ' + str(period) + ' year periods')
+	axes.set(xlabel='Central Year',ylabel='r-value')
+	axes.legend()
+	figure_name = Figure_dir + 'Final_period_correlations_' + season + '_' + str(period) + '_years.png'
+	print('saving figure to ' + figure_name)
+	fig.savefig(figure_name)
 
 
-#use run_sam_analysis to run code
+array = [True, False]
+for i in array:
+	for j in array:
+		graph_all(season='DJF', compare_SEAS5=i, detrended=j)
+
+"""
+run_multi_correlations(20, season='DJF')
+run_multi_correlations(15, season='DJF')
+run_multi_correlations(10, season='DJF')
+run_multi_correlations(25, season='DJF')
+"""

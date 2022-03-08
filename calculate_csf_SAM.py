@@ -280,56 +280,76 @@ def save_seas5_SAM_indices(season='DJF'):
 	save.close_file()
 
 
-def graph_SAM_indices(dataset='CSF-20C', season='DJF', variance=True):
+def graph_SAM_indices(dataset='CSF-20C', season='DJF', variance=True, trend=True, cut_years=False):
 	#plots CSF SAM index, Marshall SAM index, and ERA SAM index on same graph
 	#should be adjusted for optional trendline
+	if dataset=='SEAS5': variance=False
 	if variance:
 		yearly_SAM_indices, mean_SAM_indices, SAM_stdevs, times, calendar, t_units = get_SAM_indices(dataset, season)
 	else:
 		mean_SAM_indices, times, calendar, t_units = read_SAM_indices(dataset, season)
-	
+	if (dataset=='CSF-20C' or dataset=='ASF-20C') and season=='DJF': times += 1
 	#reads in offical Marshall SAM index data from text file
 	Marshall_SAM_index, years_SAM = rd_data.read_Marshall_SAM_idx(season)
 	
 	#does same mean surface level pressure calculations for ERA5 data
 	era_SAM_indices, era_years = get_era_SAM_indices(season)
 	
+	if cut_years:
+		if dataset=='SEAS5': start_year, end_year = 1982, 2010
+		else: start_year, end_year = 1958, 2010
+		year_mask = (times >= start_year) & (times <= end_year)
+		mean_SAM_indices = mean_SAM_indices[year_mask]
+		times = times[year_mask]
+		if variance: yearly_SAM_indices = yearly_SAM_indices[year_mask]
+		Marshall_mask = (years_SAM >= start_year) & (years_SAM <= end_year)
+		Marshall_SAM_index = Marshall_SAM_index[Marshall_mask]
+		years_SAM = years_SAM[Marshall_mask]
+		era_mask = (era_years >= start_year) & (era_years <= end_year)
+		era_SAM_indices = era_SAM_indices[era_mask]
+		era_years = era_years[era_mask]
+	
 	#displays plots of ensemble and mean SAM indices
 	plt.clf()
-	if variance:
-		plt.plot(times, yearly_SAM_indices, color='gray')
+	if variance: plt.plot(times, yearly_SAM_indices, color='gray')
 	plt.plot(times, mean_SAM_indices, linewidth = 2, color = 'black', label = 'mean')
 	plt.plot(years_SAM, Marshall_SAM_index, linewidth = 2, color = 'red', label = 'Marshall data')
 	plt.plot(era_years, era_SAM_indices, linewidth = 2, color= 'blue', label = 'ERA5 data')
 	
-	#does linear regression to find trend for each dataset
-	csf_res = linregress(times, mean_SAM_indices)
-	Marshall_res = linregress(years_SAM, Marshall_SAM_index)
-	era_res = linregress(era_years, era_SAM_indices)
+	if trend:
+		#does linear regression to find trend for each dataset
+		csf_res = linregress(times, mean_SAM_indices)
+		Marshall_res = linregress(years_SAM, Marshall_SAM_index)
+		era_res = linregress(era_years, era_SAM_indices)
+		
+		#generates line to plot for each dataset
+		csf_line = []
+		for point in times:
+			csf_line.append(point * csf_res.slope + csf_res.intercept)
+		Marshall_line = []
+		for point in years_SAM:
+			Marshall_line.append(point * Marshall_res.slope + Marshall_res.intercept)
+		era_line = []
+		for point in era_years:
+			era_line.append(point * era_res.slope + era_res.intercept)
 	
-	#generates line to plot for each dataset
-	csf_line = []
-	for point in times:
-		csf_line.append(point * csf_res.slope + csf_res.intercept)
-	Marshall_line = []
-	for point in years_SAM:
-		Marshall_line.append(point * Marshall_res.slope + Marshall_res.intercept)
-	era_line = []
-	for point in era_years:
-		era_line.append(point * era_res.slope + era_res.intercept)
+		#plots trend lines
+		plt.plot(times, csf_line, color='black', linestyle='dashed')
+		plt.plot(years_SAM, Marshall_line, color='red', linestyle='dashed')
+		plt.plot(era_years, era_line, color='blue', linestyle='dashed')
 	
-	#plots trend lines
-	plt.plot(times, csf_line, color='black', linestyle='dashed')
-	plt.plot(years_SAM, Marshall_line, color='red', linestyle='dashed')
-	plt.plot(era_years, era_line, color='blue', linestyle='dashed')
-	
-	#plt.errorbar(times, mean_SAM_indices, yerr=SAM_stdevs, color='black', label='standard deviation')
+	title = 'SAM Index in ' + dataset + ' Ensemble During ' + season
+	if cut_years: title += ': ' + str(start_year) + '-' + str(end_year)
 	plt.title('Normalized SAM Index in ' + dataset + ' Ensemble During ' + season)
 	plt.xlabel('Year')
 	plt.ylabel('Normalized SAM Index')
 	plt.legend()
 	
-	figure_name = Figure_dir + dataset + '_' + season + '_Normalized_SAM.png'
+	figure_name = Figure_dir + 'Final_' + dataset + '_' + season
+	if trend: figure_name += '_trend'
+	if cut_years: figure_name += '_cut_years'
+	figure_name += '_Normalized_SAM.png'
+	print('saving figure to ' + figure_name)
 	plt.savefig(figure_name)
 	#plt.show()
 
