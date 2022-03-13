@@ -158,18 +158,30 @@ def graph_all(season='DJF', compare_SEAS5=True, detrended=False):
 	print('saving figure to ' + figure_name)
 	fig.savefig(figure_name)
 
+def confidence_interval(period, r):
+	z_r = np.log((1+r)/(1-r))/2
+	L = z_r - (1.96/np.sqrt(period - 3))
+	U = z_r + (1.96/np.sqrt(period - 3))
+	lower_bound = (np.exp(2*L) - 1) / (np.exp(2*L) + 1)
+	upper_bound = (np.exp(2*U) - 1) / (np.exp(2*U) + 1)
+	return lower_bound, upper_bound
+
 def diff_period_correlations(axes, period, dataset='CSF-20C', season='DJF'):
 	#produces plots of interannual variability with SAM subtracted
 	if dataset=='SEAS5': start_years = np.arange(1982, 2017+1-period, 1)
+	elif dataset=='ERA5': start_years = np.arange(1958, 2020+1-period, 1)
 	elif dataset=='CSF-20C' and season=='DJF': start_years = np.arange(1958, 2011+1-period, 1)
 	else: start_years = np.arange(1958, 2010+1-period, 1)
 	
-	mean_SAM_indices, times, _, _ = calc1.read_SAM_indices(dataset, season)
+	if dataset=='ERA5': mean_SAM_indices, times = calc1.get_era_SAM_indices(season)
+	else: mean_SAM_indices, times, _, _ = calc1.read_SAM_indices(dataset, season)
 	if (dataset=='CSF-20C' or dataset == 'ASF-20C') and season=='DJF':
 		times += 1
 	Marshall_SAM_indices, Marshall_years = rd_data.read_Marshall_SAM_idx(season)
 	
 	r_values = []
+	lower_bounds = []
+	upper_bounds = []
 	#p_values = []
 	for start_year in start_years:
 		end_year = start_year + period
@@ -181,32 +193,19 @@ def diff_period_correlations(axes, period, dataset='CSF-20C', season='DJF'):
 		masked_Marshall_times = Marshall_years[year_mask_Marshall]
 		res = linregress(masked_SAM, masked_Marshall)
 		r_values.append(res.rvalue)
+		lower_bound, upper_bound = confidence_interval(period, res.rvalue)
+		lower_bounds.append(lower_bound)
+		upper_bounds.append(upper_bound)
 		#p_values.append(sig_test.significance(masked_SAM, masked_Marshall, 1))
 	
 	axes.plot(start_years + int(period / 2), r_values, label=dataset)
-	#plt.plot(start_years, p_values)
+	axes.fill_between(start_years + int(period / 2), lower_bounds, upper_bounds, alpha=.1)
+	#plt.plot(start_years + int(period / 2), p_values)
 	#plt.show()
-	
-	"""
-	#plots interannual variability
-	axes.plot(masked_SAM, masked_Marshall, 'o', label='original data')
-	
-	res = linregress(masked_SAM, masked_Marshall)
-	xpts = np.arange(-2.2, 2.2, 0.1)
-	lineplot = []
-	for point in xpts:
-		lineplot.append(point * res.slope + res.intercept)
-	
-	axes.plot(xpts, lineplot, 'r', label='fitted line')
-	axes.set(xlabel=dataset + ' SAM', ylabel='Marshall SAM')
-	significance = sig_test.significance(masked_SAM, masked_Marshall, 1)
-	axes.annotate(f"p-value: {significance:.6f}", (0.1, 0.85), xycoords='axes fraction')
-	axes.annotate(f"r-value: {res.rvalue:.6f}", (0.1, 0.65), xycoords='axes fraction')
-	"""
 
 def run_multi_correlations(period, season='DJF'):
-	if season=='DJF': datasets=['CSF-20C', 'ASF-20C', 'SEAS5']
-	else: datasets=['CSF-20C', 'ASF-20C']
+	if season=='DJF': datasets=['CSF-20C', 'ASF-20C', 'SEAS5', 'ERA5']
+	else: datasets=['CSF-20C', 'ASF-20C', 'ERA5']
 	fig, axes = plt.subplots()
 	
 	for dataset in datasets:
@@ -214,19 +213,71 @@ def run_multi_correlations(period, season='DJF'):
 	fig.suptitle('Correlation During ' + str(period) + ' year periods')
 	axes.set(xlabel='Central Year',ylabel='r-value')
 	axes.legend()
-	figure_name = Figure_dir + 'Final_period_correlations_' + season + '_' + str(period) + '_years.png'
+	figure_name = Figure_dir + 'Interval_period_correlations_' + season + '_' + str(period) + '_years.png'
 	print('saving figure to ' + figure_name)
 	fig.savefig(figure_name)
 
+def diff_period_trends(axes, period, dataset='CSF-20C', season='DJF'):
+	#produces plots of interannual variability with SAM subtracted
+	if dataset=='SEAS5': start_years = np.arange(1982, 2017+1-period, 1)
+	elif dataset=='Marshall': start_years = np.arange(1958, 2020+1-period, 1)
+	elif dataset=='ERA5': start_years = np.arange(1950, 2020+1-period, 1)
+	elif dataset=='CSF-20C' and season=='DJF': start_years = np.arange(1901, 2011+1-period, 1)
+	else: start_years = np.arange(1901, 2010+1-period, 1)
+	
+	if dataset=='Marshall': mean_SAM_indices, times = rd_data.read_Marshall_SAM_idx(season)
+	elif dataset=='ERA5': mean_SAM_indices, times = calc1.get_era_SAM_indices(season)
+	else: mean_SAM_indices, times, _, _ = calc1.read_SAM_indices(dataset, season)
+	if (dataset=='CSF-20C' or dataset == 'ASF-20C') and season=='DJF': times += 1
+	
+	trends = []
+	lower_bounds = []
+	upper_bounds = []
+	#p_values = []
+	for start_year in start_years:
+		end_year = start_year + period
+		year_mask = (times >= start_year) & (times <= end_year)
+		masked_SAM = mean_SAM_indices[year_mask]
+		masked_times = times[year_mask]
+		res = linregress(masked_times, masked_SAM)
+		trends.append(res.slope)
+		lower_bounds.append(res.slope - 1.96 * res.stderr)
+		upper_bounds.append(res.slope + 1.96 * res.stderr)
+		#p_values.append(sig_test.significance(masked_SAM, masked_Marshall, 1))
+	
+	axes.plot(start_years + int(period / 2), trends, label=dataset)
+	axes.fill_between(start_years + int(period / 2), lower_bounds, upper_bounds, alpha=.1)
+	#plt.plot(start_years, p_values)
+	#plt.show()
 
+def run_multi_trends(period, season='DJF'):
+	if season=='DJF': datasets=['Marshall', 'CSF-20C', 'ASF-20C', 'SEAS5', 'ERA5']
+	else: datasets=['Marshall', 'CSF-20C', 'ASF-20C', 'ERA5']
+	fig, axes = plt.subplots()
+	
+	for dataset in datasets:
+		diff_period_trends(axes, period, dataset=dataset, season=season)
+	fig.suptitle('Trend During ' + str(period) + ' year periods')
+	axes.set(xlabel='Central Year',ylabel='$\Delta$ SAM/year')
+	axes.legend()
+	figure_name = Figure_dir + 'Final_period_trends_' + season + '_' + str(period) + '_years.png'
+	print('saving figure to ' + figure_name)
+	fig.savefig(figure_name)
+
+"""
 array = [True, False]
 for i in array:
 	for j in array:
 		graph_all(season='DJF', compare_SEAS5=i, detrended=j)
-
 """
-run_multi_correlations(20, season='DJF')
-run_multi_correlations(15, season='DJF')
-run_multi_correlations(10, season='DJF')
-run_multi_correlations(25, season='DJF')
+intervals = np.arange(10, 35, 5)
+for period in intervals:
+	run_multi_correlations(period, season='DJF')
+	run_multi_trends(period, season='DJF')
+"""
+run_multi_trends(20, season='DJF')
+run_multi_trends(15, season='DJF')
+run_multi_trends(10, season='DJF')
+run_multi_trends(25, season='DJF')
+run_multi_trends(30, season='DJF')
 """

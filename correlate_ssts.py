@@ -104,7 +104,7 @@ def make_corr_map(dataset, season, variable='sst', compare_SEAS5=True):
 	corrs_map, pvals_map = cal_grid_point_correlations(ds_am, interpolated_era, return_pvals=True)
 	
 	#make plots
-	plt.figure(figsize=(15,10))
+	plt.figure(figsize=(15,7))
 	gs = gridspec.GridSpec(2,1,height_ratios=[10,0.5])
 	
 	clevs = np.arange(-1.05,1.1,0.1)

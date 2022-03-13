@@ -59,7 +59,7 @@ def graph_one(axes, dataset='CSF-20C', season='DJF', variance=True, trend=True, 
 	if variance: axes.plot(times, yearly_SAM_indices, color='gray')
 	axes.plot(times, mean_SAM_indices, linewidth = 2, color = 'black', label = dataset)
 	axes.plot(years_SAM, Marshall_SAM_index, linewidth = 2, color = 'red', label = 'Marshall')
-	axes.plot(era_years, era_SAM_indices, linewidth = 2, color= 'blue', label = 'ERA5')
+	#axes.plot(era_years, era_SAM_indices, linewidth = 2, color= 'blue', label = 'ERA5')
 	
 	if trend:
 		#does linear regression to find trend for each dataset
@@ -81,7 +81,7 @@ def graph_one(axes, dataset='CSF-20C', season='DJF', variance=True, trend=True, 
 		#plots trend lines
 		axes.plot(times, csf_line, color='black', linestyle='dashed')
 		axes.plot(years_SAM, Marshall_line, color='red', linestyle='dashed')
-		axes.plot(era_years, era_line, color='blue', linestyle='dashed')
+		#axes.plot(era_years, era_line, color='blue', linestyle='dashed')
 	
 	axes.set(xlabel='Year', ylabel='SAM')
 	axes.label_outer()
@@ -109,5 +109,6 @@ def graph_all(season='DJF', variance=True, trend=True, cut_years=False):
 	fig.savefig(figure_name)
 	#fig.show()
 
-graph_all(season='DJF', variance=True, trend=False, cut_years=False)
-graph_all(season='DJF', variance=False, trend=True, cut_years=True)
+#graph_all(season='DJF', variance=True, trend=False, cut_years=False)
+#graph_all(season='DJF', variance=False, trend=True, cut_years=True)
+graph_all(season='DJF', variance=False, trend=True, cut_years=False)
