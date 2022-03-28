@@ -31,9 +31,9 @@ def make_corr_map(dataset, season, variable='sst', compare_SEAS5=True):
 		era_var, era_lats, era_lons, era_levs, era_times, era_calendar, era_t_units = reading_in_data_functions.read_in_variable(era_file, 'tos')
 		era_file2 = '/network/group/aopp/met_data/MET001_ERA5/data/tos/mon/tos_mon_ERA5_1x1_197901-202012.nc'
 		era_var2, era_lats2, era_lons2, era_levs2, era_times2,_,_= reading_in_data_functions.read_in_variable(era_file2, 'tos')
-		ds_var[np.abs(ds_var)>1e3] = np.nan
-		era_var[np.abs(era_var)>1e3] = np.nan
-		era_var2[np.abs(era_var2)>1e3] = np.nan
+		#ds_var[np.abs(ds_var)>1e3] = np.nan
+		#era_var[np.abs(era_var)>1e3] = np.nan
+		#era_var2[np.abs(era_var2)>1e3] = np.nan
 	
 	elif variable=='slp' or variable=='mslp' or variable=='psl':
 		if dataset=='CSF-20C':
@@ -92,7 +92,7 @@ def make_corr_map(dataset, season, variable='sst', compare_SEAS5=True):
 	#grid size of ERA and CSF is different so need to interpolate
 	#something is going wrong with the 3D interpolation so separately interpolating each 2D grid instead
 	
-	if dataset != 'CSF-20C' or variable != 'sst':
+	if np.shape(ds_am) != np.shape(era_am):
 		interpolated_era = []
 		for grid in era_am:
 			new_grid = interpolate_grid(grid, era_lons, era_lats, ds_lons, ds_lats)
@@ -140,7 +140,7 @@ array = [True, False]
 for arr in array:
 	season = 'DJF'
 	dataset = 'CERA-20C'
-	#make_corr_map(dataset, season, variable='sst', compare_SEAS5=arr)
+	make_corr_map(dataset, season, variable='sst', compare_SEAS5=arr)
 	make_corr_map(dataset, season, variable='slp', compare_SEAS5=arr)
 	
 	dataset = 'CSF-20C'
@@ -151,7 +151,7 @@ for arr in array:
 	dataset = 'SEAS5'
 	make_corr_map(dataset, season, variable='sst')
 	make_corr_map(dataset, season, variable='slp')
-
+    
 	dataset = 'ASF-20C'
 	make_corr_map(dataset, season, variable='zg', compare_SEAS5=arr)
 

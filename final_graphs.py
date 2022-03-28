@@ -37,6 +37,7 @@ def graph_one(axes, dataset='CSF-20C', season='DJF', variance=True, trend=True, 
 	if (dataset=='CSF-20C' or dataset=='ASF-20C') and season=='DJF': times += 1
 	#reads in offical Marshall SAM index data from text file
 	Marshall_SAM_index, years_SAM = rd_data.read_Marshall_SAM_idx(season)
+	Marshall_SAM_index /= np.std(Marshall_SAM_index)
 	
 	#does same mean surface level pressure calculations for ERA5 data
 	era_SAM_indices, era_years = get_era_SAM_indices(season)
