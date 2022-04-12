@@ -152,19 +152,20 @@ def plot_all(datasets, season, variable, compare_SEAS5):
 	
 	clevs = np.arange(-1.05,1.1,0.1)
 	projection = ccrs.PlateCarree(central_longitude=0.)
+	labels = ['(a)', '(b)']
 	for i, dataset in enumerate(datasets):
 		corrs_map, pvals_map, ds_lons, ds_lats = make_corr_map(dataset, season, variable=variable, compare_SEAS5=compare_SEAS5)
 		ax = plt.subplot(gs[i,0], projection=projection)
 		cs = plotting_functions.plot_filled_contours(corrs_map, ds_lons, ds_lats, clevs, ax, title='')
 		plotting_functions.add_significance(pvals_map, ds_lons, ds_lats, clevs=np.array([0,0.05])) #plot hatching to show where p values are less than 0.05, ie statistically significant
-		ax.text(-0.07,0.8, dataset, transform = ax.transAxes, fontsize=20, va='top', ha='right')
+		ax.text(-0.07,0.8, labels[i], transform = ax.transAxes, fontsize=20, va='top', ha='right')
 		if i == 0:
 			if variable == 'zg': title_str = '500 hPa Geopotential Height Skill during DJF: ' + str(start_year) + '-' + str(end_year)
 			elif variable == 'slp': title_str = 'Sea Level Pressure Skill during DJF: ' + str(start_year) + '-' + str(end_year)
 			else: title_str = variable + ' correlation between Datasets and ERA5 during ' + season + ': ' + str(start_year) + '-' + str(end_year)
-			plt.title(title_str, fontsize=30)
-		if i < len(datasets) - 1: plotting_functions.add_latlon_labels(ax,xticks=[],yticks=np.arange(-80,81,20), fontsize=15) #add latitude longitude labels
-		else: plotting_functions.add_latlon_labels(ax,xticks=np.arange(-180,181,60),yticks=np.arange(-80,81,20), fontsize=15)
+			#plt.title(title_str, fontsize=30)
+		if i < len(datasets) - 1: plotting_functions.add_latlon_labels(ax,xticks=[],yticks=np.arange(-80,81,20), fontsize=20) #add latitude longitude labels
+		else: plotting_functions.add_latlon_labels(ax,xticks=np.arange(-180,181,60),yticks=np.arange(-80,81,20), fontsize=20)
 		ax.set_extent([-180,179,-90,20],crs=ccrs.PlateCarree())
 	
 	#colour bar

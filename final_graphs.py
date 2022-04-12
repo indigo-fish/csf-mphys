@@ -43,8 +43,7 @@ def graph_one(axes, dataset='CSF-20C', season='DJF', variance=True, trend=True, 
 	era_SAM_indices, era_years = get_era_SAM_indices(season)
 	
 	if cut_years:
-		if dataset=='SEAS5': start_year, end_year = 1982, 2010
-		else: start_year, end_year = 1958, 2010
+		start_year, end_year = 1982, 2010
 		year_mask = (times >= start_year) & (times <= end_year)
 		mean_SAM_indices = mean_SAM_indices[year_mask]
 		times = times[year_mask]
@@ -86,8 +85,10 @@ def graph_one(axes, dataset='CSF-20C', season='DJF', variance=True, trend=True, 
 	
 	axes.set(xlabel='Year', ylabel='SAM')
 	axes.label_outer()
-	axes.legend(loc='center left')
-	
+	axes.legend(loc='upper left')
+	#axes.set_title(dataset)
+	for item in ([axes.title, axes.xaxis.label, axes.yaxis.label] + axes.get_xticklabels() + axes.get_yticklabels() + axes.get_legend().get_texts()):
+		item.set_fontsize(13)
 	figure_name = Figure_dir + 'Final_' + dataset + '_' + season
 	if trend: figure_name += '_trend'
 	if cut_years: figure_name += '_cut_years'
@@ -100,14 +101,15 @@ def graph_all(season='DJF', variance=True, trend=True, cut_years=False):
 	for dataset, axis in zip(datasets, axes):
 		graph_one(axis, dataset=dataset, season=season, variance=variance, trend=trend, cut_years=cut_years)
 	title = 'SAM Indices in ' + season
-	fig.suptitle(title)
+	#fig.suptitle(title)
+	fig.tight_layout()
 	
 	figure_name = Figure_dir + 'Final_Multiseries_' + season
 	if trend: figure_name += '_trend'
 	if cut_years: figure_name += '_cut_years'
 	figure_name += '_Normalized_SAM.png'
 	print('saving figure to ' + figure_name)
-	fig.savefig(figure_name)
+	fig.savefig(figure_name, bbox_inches='tight')
 	#fig.show()
 
 #graph_all(season='DJF', variance=True, trend=False, cut_years=False)

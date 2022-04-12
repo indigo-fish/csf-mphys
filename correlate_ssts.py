@@ -118,15 +118,15 @@ def make_corr_map(dataset, season, variable='sst', compare_SEAS5=True):
 		#ax.text(-0.05,1, subplot_labels[i], transform = ax.transAxes, fontsize=25, va='top', ha='right')
 		if i == 0:
 			title_str = variable + ' correlation between ' + dataset + ' and ERA5 during ' + season + ': ' + str(start_year) + '-' + str(end_year)
-			plt.title(title_str, fontsize=30)
-			plotting_functions.add_latlon_labels(ax,xticks=np.arange(-180,181,60),yticks=np.arange(-80,81,20)) #add latitude longitude labels
+			#plt.title(title_str, fontsize=30)
+			#plotting_functions.add_latlon_labels(ax,xticks=np.arange(-180,181,60),yticks=np.arange(-80,81,20)) #add latitude longitude labels
 		ax.set_extent([-180,179,-90,20],crs=ccrs.PlateCarree())
 	
 	#colour bar
 	ax = plt.subplot(gs[1,:])
 	plotting_functions.colorbar(ax,cs)
 	
-	#plt.subplots_adjust(hspace=0.1, wspace=0.1) #force subplots to be close together
+	plt.subplots_adjust(hspace=0.1, wspace=0.1) #force subplots to be close together
 	
 	#save figure
 	figure_name = Figure_dir + 'Another_' + variable + '_correlations_' + dataset + '_ERA_' + season + '_' + str(start_year) + '-' + str(end_year)
@@ -140,18 +140,18 @@ array = [True, False]
 for arr in array:
 	season = 'DJF'
 	dataset = 'CERA-20C'
-	make_corr_map(dataset, season, variable='sst', compare_SEAS5=arr)
-	make_corr_map(dataset, season, variable='slp', compare_SEAS5=arr)
+	#make_corr_map(dataset, season, variable='sst', compare_SEAS5=arr)
+	#make_corr_map(dataset, season, variable='slp', compare_SEAS5=arr)
 	
 	dataset = 'CSF-20C'
 	make_corr_map(dataset, season, variable='sst', compare_SEAS5=arr)
-	make_corr_map(dataset, season, variable='slp', compare_SEAS5=arr)
-	make_corr_map(dataset, season, variable='zg', compare_SEAS5=arr)
+	#make_corr_map(dataset, season, variable='slp', compare_SEAS5=arr)
+	#make_corr_map(dataset, season, variable='zg', compare_SEAS5=arr)
 	
 	dataset = 'SEAS5'
-	make_corr_map(dataset, season, variable='sst')
-	make_corr_map(dataset, season, variable='slp')
+	#make_corr_map(dataset, season, variable='sst')
+	#make_corr_map(dataset, season, variable='slp')
     
 	dataset = 'ASF-20C'
-	make_corr_map(dataset, season, variable='zg', compare_SEAS5=arr)
+	#make_corr_map(dataset, season, variable='zg', compare_SEAS5=arr)
 

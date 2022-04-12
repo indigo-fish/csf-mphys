@@ -84,41 +84,55 @@ def make_all_maps(season='DJF', compare_SEAS5=True, detrended=False):
         start_year, end_year = 1958, 1986
     
     # make some plots
-    plt.figure(figsize=(15,15))
+    if len(datasets)==4 or len(datasets)==3: numrows = 2
+    xlen = (numrows + 1)*4
+    plt.figure(figsize=(40,xlen))
     height_ratios = []
-    for dataset in datasets:
+    hght = 0
+    while hght < numrows:
         height_ratios.append(10)
+        hght += 1
     height_ratios.append(0.5)
-    gs = gridspec.GridSpec(len(datasets) + 1,1,height_ratios=height_ratios)
+    gs = gridspec.GridSpec(numrows + 1, 2, height_ratios=height_ratios)
     
     clevs = np.arange(-.75, .8, .1)
     projection = ccrs.PlateCarree(central_longitude=0.)
+    if len(datasets)==4: labels = ['(a)', '(b)', '(c)', '(d)']
+    elif len(datasets)==3: labels = ['(a)', '(b)', '(c)']
+    elif len(datasets)==2: labels = ['(a)', '(b)']
     for i, dataset in enumerate(datasets):
         regress_coeff, corr, pvals, lons, lats = get_corr(season, dataset=dataset, compare_SEAS5=compare_SEAS5, detrended=detrended)
-        ax = plt.subplot(gs[i,0],projection=projection)
+        if i==0: gs_index = gs[0,0]
+        elif i==1: gs_index = gs[0,1]
+        elif i==2:
+            if len(datasets)==4: gs_index = gs[1,0]
+            else: gs_index = gs[1,:]
+        elif i==3: gs_index = gs[1,1]
+        ax = plt.subplot(gs_index,projection=projection)
         cs = plotting_functions.plot_filled_contours(regress_coeff,lons,lats,clevs,ax,title='')
         plotting_functions.add_significance(pvals,lons,lats,clevs=np.array([0,0.05]))  # plot hatching to show where p values are less than 0.05, i.e. stat significant
-        ax.text(-0.1,1, dataset, transform=ax.transAxes,fontsize=20, va='top', ha='right')
+        ax.text(-0.1, 0.6, labels[i], transform=ax.transAxes, fontsize=25, va='top', ha='right')
         if i == 0:
             if detrended: title_str = 'Regression of ' + season + ' Detrended SAM onto SSTs: ' + str(start_year) + '-' + str(end_year)
             else: title_str = 'Regression of ' + season + ' SAM onto SSTs: ' + str(start_year) + '-' + str(end_year)
-            plt.title(title_str,fontsize=30)
-        if i < len(datasets) - 1: plotting_functions.add_latlon_labels(ax,xticks=[],yticks=np.arange(-80,81,20),fontsize=15) # add latitude longitude labels
-        else: plotting_functions.add_latlon_labels(ax,xticks=np.arange(-180,181,60),yticks=np.arange(-80,81,20),fontsize=15) # add latitude longitude labels
+            #plt.title(title_str,fontsize=30)
+        if i < len(datasets) - 1: plotting_functions.add_latlon_labels(ax,xticks=[],yticks=np.arange(-80,81,20),fontsize=25) # add latitude longitude labels
+        else: plotting_functions.add_latlon_labels(ax,xticks=np.arange(-180,181,60),yticks=np.arange(-80,81,20),fontsize=25) # add latitude longitude labels
         ax.set_extent([-180,179,-90,20],crs=ccrs.PlateCarree())
     
     # colour bar
-    ax = plt.subplot(gs[len(datasets),:])
-    plotting_functions.colorbar(ax,cs)
+    ax = plt.subplot(gs[numrows,:])
+    plotting_functions.colorbar(ax, cs, labelsize=25)
     
-    #plt.subplots_adjust(hspace=0.1,wspace=0.1) # force subplots to be close together
+    #plt.subplots_adjust(hspace=0.2,wspace=0.5) # force subplots to be close together
     
     # save figure
-    if detrended: figure_name = Figure_dir + 'Final_detrended_SAM_pattern_' + variable + '_' + str(start_year) + '-' + str(end_year) + '_' + season + '.png'
-    else: figure_name = Figure_dir + 'Final_SAM_pattern_' + variable + '_' + str(start_year) + '-' + str(end_year) + '_' + season + '.png'
+    if detrended: figure_name = Figure_dir + 'Untitled_detrended_SAM_pattern_' + variable + '_' + str(start_year) + '-' + str(end_year) + '_' + season + '.png'
+    else: figure_name = Figure_dir + 'Untitled_SAM_pattern_' + variable + '_' + str(start_year) + '-' + str(end_year) + '_' + season + '.png'
     print('saving to %s' % (figure_name))
     plt.savefig(figure_name,bbox_inches='tight')
-    plt.show()
+    #plt.savefig(figure_name)
+    #plt.show()
 
 
 def runregression(season, dataset='Marshall', compare_SEAS5=True):

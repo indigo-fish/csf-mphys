@@ -85,7 +85,7 @@ def detrend_data(dataset='CSF-20C', season='DJF', compare_SEAS5 = True, full_per
 
 
 def corr_without_trend(axes, dataset='CSF-20C', season='DJF', compare_SEAS5 = True, full_period=False):
-	#produces plots of interannual variability with SAM subtracted
+	#produces plots of interannual variability with SAM trend subtracted
 	if compare_SEAS5:
 		years = '1982-2010'
 	else:
@@ -117,7 +117,7 @@ def corr_without_trend(axes, dataset='CSF-20C', season='DJF', compare_SEAS5 = Tr
 
 
 def corr_with_trend(axes, dataset='CSF-20C', season='DJF', compare_SEAS5 = True, full_period=False):
-	#produces plots of interannual variability with SAM subtracted
+	#produces plots of interannual variability
 	if compare_SEAS5:
 		years = '1982-2010'
 	else:
@@ -201,7 +201,7 @@ def confidence_interval(period, r):
 	return lower_bound, upper_bound
 
 def diff_period_correlations(axes, period, dataset='CSF-20C', season='DJF'):
-	#produces plots of interannual variability with SAM subtracted
+	#produces plots of interannual variability during particular length periods over time
 	if dataset=='SEAS5': start_years = np.arange(1982, 2017+1-period, 1)
 	elif dataset=='ERA5': start_years = np.arange(1958, 2020+1-period, 1)
 	elif dataset=='CSF-20C' and season=='DJF': start_years = np.arange(1958, 2011+1-period, 1)
@@ -244,12 +244,14 @@ def run_multi_correlations(period, season='DJF'):
 	
 	for dataset in datasets:
 		diff_period_correlations(axes, period, dataset=dataset, season=season)
-	fig.suptitle('Correlation During ' + str(period) + ' year periods')
+	#fig.suptitle('Correlation During ' + str(period) + ' year periods')
 	axes.set(xlabel='Central Year',ylabel='r-value')
 	axes.legend()
+	for item in ([axes.title, axes.xaxis.label, axes.yaxis.label] + axes.get_xticklabels() + axes.get_yticklabels() + axes.get_legend().get_texts()):
+		item.set_fontsize(13)
 	figure_name = Figure_dir + 'Interval_period_correlations_' + season + '_' + str(period) + '_years.png'
 	print('saving figure to ' + figure_name)
-	fig.savefig(figure_name)
+	fig.savefig(figure_name, bbox_inches='tight')
 
 def diff_period_trends(axes, period, dataset='CSF-20C', season='DJF'):
 	#produces plots of interannual variability with SAM subtracted
@@ -292,18 +294,22 @@ def run_multi_trends(period, season='DJF'):
 	
 	for dataset in datasets:
 		diff_period_trends(axes, period, dataset=dataset, season=season)
-	fig.suptitle('Trend During ' + str(period) + ' year periods')
+	#fig.suptitle('Trend During ' + str(period) + ' year periods')
 	axes.set(xlabel='Central Year',ylabel='$\Delta$ SAM/year')
 	axes.legend()
+	for item in ([axes.title, axes.xaxis.label, axes.yaxis.label] + axes.get_xticklabels() + axes.get_yticklabels() + axes.get_legend().get_texts()):
+		item.set_fontsize(13)
 	figure_name = Figure_dir + 'Final_period_trends_' + season + '_' + str(period) + '_years.png'
 	print('saving figure to ' + figure_name)
-	fig.savefig(figure_name)
+	fig.savefig(figure_name, bbox_inches='tight')
 
-
+"""
 array = [True, False]
 for i in array:
 	graph_all(season='DJF', compare_SEAS5=False, detrended=i, full_period=True)
-
+"""
+run_multi_correlations(30, season='DJF')
+run_multi_trends(30, season='DJF')
 """
 intervals = np.arange(10, 35, 5)
 intervals = [30]
